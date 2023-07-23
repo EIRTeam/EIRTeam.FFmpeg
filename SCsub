@@ -1,0 +1,51 @@
+#!/usr/bin/env python
+
+import ffmpeg_download
+Import("env")
+
+FFMPEG_DOWNLOAD_WINDOWS = "https://github.com/EIRTeam/FFmpeg-Builds/releases/download/autobuild-2023-07-23-11-40/ffmpeg-N-111601-g89f5124d0a-win64-lgpl-godot.zip"
+
+if not "RPATH" in env:
+    env.Append(RPATH=env.Literal('\\$$ORIGIN'))
+
+env_ffmpeg = env.Clone()
+
+env_ffmpeg.CommandNoCache(
+    "thirdparty/ffmpeg/",
+    "ffmpeg_download.py",
+    env_ffmpeg.Run(ffmpeg_download.download_ffmpeg, "Downloading FFMPEG library"),
+)
+
+module_obj = []
+
+excluded = []
+
+sources = [x for x in Glob("*.cpp") if str(x) not in excluded]
+
+env_ffmpeg.Prepend(CPPPATH="thirdparty/ffmpeg/include")
+env.Append(LIBPATH="/home/eirexe/repos/godot-ph4/modules/ffmpeg/thirdparty/ffmpeg/lib")
+env.Append(LIBS=[
+    "avcodec",
+    "avfilter",
+    "avformat",
+    "avutil",
+    "swresample",
+    "swscale"
+])
+
+
+env.Install("#bin", Glob("thirdparty/ffmpeg/lib/*.so"))
+
+#env_ffmpeg.Append(CPPDEFINES=["FFMPEG_MT_GPU_UPLOAD"])
+if ARGUMENTS.get("ffmpeg_shared", "no") == "yes":
+    # Shared lib compilation
+    env_ffmpeg.Append(CCFLAGS=["-fPIC"])
+    env_ffmpeg["LIBS"] = FFMPEG_LIBS
+    shared_lib = env_ffmpeg.SharedLibrary(target="#bin/ffmpeg", source=sources)
+    shared_lib_shim = shared_lib[0].name.rsplit(".", 1)[0]
+    env.Append(LIBPATH=["#bin"])
+    env.Append(LIBS=["libffmpeg.linuxbsd.editor.dev.x86_64"])
+else:
+    env_ffmpeg.add_source_files(module_obj, sources)
+    env.Depends(module_obj, "thirdparty/ffmpeg/")
+    env.modules_sources += module_obj
