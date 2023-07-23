@@ -147,6 +147,7 @@ public:
 	double get_last_decoded_frame_time() const;
 	bool is_running() const;
 	double get_duration() const;
+	Vector2i get_size() const;
 
 	VideoDecoder(Ref<FileAccess> p_file);
 	~VideoDecoder();

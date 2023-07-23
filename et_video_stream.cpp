@@ -96,16 +96,20 @@ void ETVideoStreamPlayback::update(double p_delta) {
 		}
 		last_frame = available_frames[0];
 		last_frame_image = last_frame->get_image();
+#ifdef FFMPEG_MT_GPU_UPLOAD
 		last_frame_texture = last_frame->get_texture();
+#endif
 		available_frames.pop_front();
 		got_new_frame = true;
 	}
 #ifndef FFMPEG_MT_GPU_UPLOAD
 	if (got_new_frame) {
-		if (!texture.is_valid()) {
-			texture = ImageTexture::create_from_image(last_frame_image);
-		} else {
-			texture->update(last_frame_image);
+		if (texture.is_valid()) {
+			if (texture->get_size() != last_frame_image->get_size() || texture->get_format() != last_frame_image->get_format()) {
+				texture->set_image(last_frame_image); // should never happen, but life has many doors ed-boy...
+			} else {
+				texture->update(last_frame_image);
+			}
 		}
 	}
 #endif
@@ -127,6 +131,8 @@ void ETVideoStreamPlayback::load(Ref<FileAccess> p_file_access) {
 	decoder = Ref<VideoDecoder>(memnew(VideoDecoder(p_file_access)));
 
 	decoder->start_decoding();
+	Vector2i size = decoder->get_size();
+	texture = ImageTexture::create_from_image(Image::create_empty(size.x, size.y, false, Image::FORMAT_RGBA8));
 }
 
 bool ETVideoStreamPlayback::is_paused() const {
@@ -176,6 +182,9 @@ Ref<Texture2D> ETVideoStreamPlayback::get_texture() const {
 
 double ETVideoStreamPlayback::get_playback_position() const {
 	return playback_position;
+}
+
+ETVideoStreamPlayback::ETVideoStreamPlayback() {
 }
 
 void ETVideoStreamPlayback::clear() {

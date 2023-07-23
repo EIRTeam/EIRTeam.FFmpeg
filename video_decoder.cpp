@@ -537,10 +537,6 @@ void VideoDecoder::start_decoding() {
 
 	thread = memnew(Thread);
 	thread->start(&VideoDecoder::_thread_func, (void *)this);
-
-	for (int i = 0; i < MAX_PENDING_FRAMES; i++) {
-		work_semaphore.post();
-	}
 }
 
 int get_hw_video_decoder_score(AVHWDeviceType p_device_type) {
@@ -640,9 +636,6 @@ Vector<Ref<DecodedFrame>> VideoDecoder::get_decoded_frames() {
 	MutexLock lock(decoded_frames_mutex);
 	frames = decoded_frames.duplicate();
 	decoded_frames.clear();
-	for (int i = 0; i < decoded_frames.size(); i++) {
-		work_semaphore.post();
-	}
 	return frames;
 }
 
@@ -662,9 +655,16 @@ double VideoDecoder::get_duration() const {
 	return duration;
 }
 
+Vector2i VideoDecoder::get_size() const {
+	if (codec_context) {
+		return Vector2i(codec_context->width, codec_context->height);
+	}
+	return Vector2i();
+}
+
 VideoDecoder::VideoDecoder(Ref<FileAccess> p_file) :
 		decoder_commands(true) {
-	video_stream = p_file;
+	video_file = p_file;
 }
 
 VideoDecoder::~VideoDecoder() {

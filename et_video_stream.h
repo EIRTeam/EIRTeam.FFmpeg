@@ -45,7 +45,9 @@ class ETVideoStreamPlayback : public VideoStreamPlayback {
 	Ref<VideoDecoder> decoder;
 	List<Ref<DecodedFrame>> available_frames;
 	Ref<DecodedFrame> last_frame;
+#ifndef FFMPEG_MT_GPU_UPLOAD
 	Ref<ImageTexture> last_frame_texture;
+#endif
 	Ref<Image> last_frame_image;
 	Ref<ImageTexture> texture;
 	bool looping = false;
@@ -72,13 +74,14 @@ public:
 	virtual double get_length() const override;
 	virtual Ref<Texture2D> get_texture() const override;
 	virtual double get_playback_position() const override;
+	ETVideoStreamPlayback();
 };
 
 class ETVideoStream : public VideoStream {
 	GDCLASS(ETVideoStream, VideoStream);
 
 public:
-	Ref<VideoStreamPlayback> instantiate_playback() override {
+	virtual Ref<VideoStreamPlayback> instantiate_playback() override {
 		Ref<ETVideoStreamPlayback> pb;
 		pb.instantiate();
 		Ref<FileAccess> fa = FileAccess::open(file, FileAccess::READ);
