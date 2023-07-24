@@ -40,6 +40,7 @@
 #include "scene/resources/image_texture.h"
 extern "C" {
 #include "libavformat/avformat.h"
+#include "libswresample/swresample.h"
 #include "libswscale/swscale.h"
 }
 
@@ -85,21 +86,30 @@ public:
 	};
 
 private:
-	Semaphore work_semaphore;
+	static const int AUDIO_BUFFER_SIZE = 4096;
+	float audio_buffer[AUDIO_BUFFER_SIZE];
+	int audio_buffer_count = 0;
+	Mutex audio_buffer_mutex;
+
 	SwsContext *sws_context = nullptr;
+	SwrContext *swr_context = nullptr;
 	DecoderState decoder_state = DecoderState::READY;
 	mutable CommandQueueMT decoder_commands;
-	AVStream *stream = nullptr;
+	AVStream *video_stream = nullptr;
+	AVStream *audio_stream = nullptr;
 	AVIOContext *io_context = nullptr;
 	AVFormatContext *format_context = nullptr;
-	AVCodecContext *codec_context = nullptr;
+	AVCodecContext *video_codec_context = nullptr;
+	AVCodecContext *audio_codec_context = nullptr;
 	bool input_opened = false;
+	bool has_audio = false;
 	bool hw_decoding_allowed = false;
-	double time_base_in_seconds;
+	double video_time_base_in_seconds;
+	double audio_time_base_in_seconds;
 	double duration;
 	double skip_output_until_time = -1.0;
 	SafeNumeric<float> last_decoded_frame_time;
-	Ref<FileAccess> video_stream;
+	Ref<FileAccess> video_file;
 	BitField<HardwareVideoDecoder> target_hw_video_decoders = HardwareVideoDecoder::ANY;
 	Mutex available_textures_mutex;
 	List<Ref<ImageTexture>> available_textures;
@@ -126,11 +136,13 @@ private:
 	int _send_packet(AVFrame *p_receive_frame, AVPacket *p_packet);
 	void _try_disable_hw_decoding(int p_error_code);
 	void _read_decoded_frames(AVFrame *p_received_frame);
+	void _read_decoded_audio_frames(AVFrame *p_received_frame);
 
 	void _hw_transfer_frame_return(Ref<FFmpegFrame> p_hw_frame);
 	void _scaler_frame_return(Ref<FFmpegFrame> p_scaler_frame);
 
 	Ref<FFmpegFrame> _ensure_frame_pixel_format(Ref<FFmpegFrame> p_frame, AVPixelFormat p_target_pixel_format);
+	AVFrame *_ensure_frame_audio_format(AVFrame *p_frame, AVSampleFormat p_target_audio_format);
 
 public:
 	struct AvailableDecoderInfo {
@@ -143,11 +155,14 @@ public:
 	void return_frames(Vector<Ref<DecodedFrame>> p_frames);
 	void return_frame(Ref<DecodedFrame> p_frame);
 	Vector<Ref<DecodedFrame>> get_decoded_frames();
+	Vector<float> get_decoded_audio_frames();
 	DecoderState get_decoder_state() const;
 	double get_last_decoded_frame_time() const;
 	bool is_running() const;
 	double get_duration() const;
 	Vector2i get_size() const;
+	int get_audio_mix_rate() const;
+	int get_audio_channel_count() const;
 
 	VideoDecoder(Ref<FileAccess> p_file);
 	~VideoDecoder();

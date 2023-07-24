@@ -74,6 +74,8 @@ public:
 	virtual double get_length() const override;
 	virtual Ref<Texture2D> get_texture() const override;
 	virtual double get_playback_position() const override;
+	virtual int get_mix_rate() const override;
+	virtual int get_channels() const override;
 	ETVideoStreamPlayback();
 };
 

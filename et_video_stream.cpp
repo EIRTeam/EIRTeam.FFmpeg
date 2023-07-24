@@ -120,6 +120,11 @@ void ETVideoStreamPlayback::update(double p_delta) {
 		}
 	}
 
+	Vector<float> audio_frames = decoder->get_decoded_audio_frames();
+	if (mix_callback && audio_frames.size() > 0) {
+		mix_callback(mix_udata, audio_frames.ptr(), audio_frames.size() / decoder->get_audio_channel_count());
+	}
+
 	buffering = decoder->is_running() && available_frames.size() == 0;
 
 	if (frame_time != get_current_frame_time()) {
@@ -182,6 +187,14 @@ Ref<Texture2D> ETVideoStreamPlayback::get_texture() const {
 
 double ETVideoStreamPlayback::get_playback_position() const {
 	return playback_position;
+}
+
+int ETVideoStreamPlayback::get_mix_rate() const {
+	return decoder->get_audio_mix_rate();
+}
+
+int ETVideoStreamPlayback::get_channels() const {
+	return decoder->get_audio_channel_count();
 }
 
 ETVideoStreamPlayback::ETVideoStreamPlayback() {
