@@ -1,0 +1,92 @@
+#!/usr/bin/env python
+import atexit
+import os
+import sys
+import methods
+import time
+import ffmpeg_download
+
+# For the reference:
+# - CCFLAGS are compilation flags shared between C and C++
+# - CFLAGS are for C-specific compilation flags
+# - CXXFLAGS are for C++-specific compilation flags
+# - CPPFLAGS are for pre-processor flags
+# - CPPDEFINES are for pre-processor defines
+# - LINKFLAGS are for linking flags
+
+time_at_start = time.time()
+
+env = SConscript("./godot-cpp/SConstruct")
+env.__class__.disable_warnings = methods.disable_warnings
+
+
+FFMPEG_DUMMY = "../thirdparty/ffmpeg/LICENSE.txt"
+ffmpeg_download_action = methods.CommandNoCache(
+    env,
+    FFMPEG_DUMMY,
+    "ffmpeg_download.py",
+    methods.Run(env, ffmpeg_download.download_ffmpeg, "Downloading FFMPEG library"),
+)
+
+opts = Variables([], ARGUMENTS)
+opts.Add(BoolVariable("verbose", "Enable verbose output for the compilation", False))
+
+opts.Update(env)
+
+if not env["verbose"]:
+    methods.no_verbose(sys, env)
+
+env.Append(CPPDEFINES=["GDEXTENSION"])
+env.Append(CPPPATH=["../"])
+sources = Glob("../*.cpp")
+sources.extend(Glob("*.cpp"))
+
+env.Prepend(CPPPATH="../thirdparty/ffmpeg/include")
+env.Append(LIBPATH="../thirdparty/ffmpeg/lib")
+ffmpeg_libs = ["avcodec", "avfilter", "avformat", "avutil", "swresample", "swscale"]
+env.Append(LIBS=ffmpeg_libs)
+
+ffmpeg_libs_to_install = []
+
+if env["platform"] == "linux":
+    for lib in ffmpeg_libs:
+        # Make sure we copy the ffmpeg library with the correct version extension
+        lib_file_name = f"lib{lib}.so"
+        lib_so_path = f"../thirdparty/ffmpeg/lib/{lib_file_name}"
+        print(lib_so_path)
+        if os.path.isfile(lib_so_path):
+            lib_soname = methods.get_soname(lib_so_path)
+            if lib_soname:
+                ffmpeg_libs_to_install.append(f"../thirdparty/ffmpeg/lib/{lib_soname}")
+
+if env["platform"] == "macos":
+    methods.write_macos_plist(
+        f'./bin/libgdffmpeg.macos.{env["target"]}.framework',
+        f'libgdffmpeg_advanced.macos.{env["target"]}',
+        "org.godotengine.ffmpeg",
+        "FFmpeg for Godot",
+    )
+    library = env.SharedLibrary(
+        f'./bin/libgdffmpeg.macos.{env["target"]}.framework/libgdffmpeg_advanced.macos.{env["target"]}',
+        source=sources,
+    )
+else:
+    library = env.SharedLibrary(
+        f'./bin/libgdffmpeg{env["suffix"]}{env["SHLIBSUFFIX"]}',
+        source=sources,
+    )
+
+env.Depends(library, FFMPEG_DUMMY)
+
+print("MAESTRULI", ffmpeg_libs_to_install)
+
+Default(library)
+
+
+def print_elapsed_time():
+    elapsed_time_sec = round(time.time() - time_at_start, 3)
+    time_ms = round((elapsed_time_sec % 1) * 1000)
+    print("[Time elapsed: {}.{:03}]".format(time.strftime("%H:%M:%S", time.gmtime(elapsed_time_sec)), time_ms))
+
+
+atexit.register(print_elapsed_time)

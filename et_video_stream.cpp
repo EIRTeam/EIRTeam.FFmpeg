@@ -29,7 +29,10 @@
 /**************************************************************************/
 
 #include "et_video_stream.h"
-#include "ffmpeg_frame.h"
+
+#ifdef GDEXTENSION
+#include "gdextension_build/gdex_print.h"
+#endif
 
 void ETVideoStreamPlayback::seek_into_sync() {
 	decoder->seek(playback_position);
@@ -56,7 +59,7 @@ bool ETVideoStreamPlayback::check_next_frame_valid(Ref<DecodedFrame> p_decoded_f
 	return p_decoded_frame->get_time() <= playback_position && Math::abs(p_decoded_frame->get_time() - playback_position) < LENIENCE_BEFORE_SEEK;
 }
 
-void ETVideoStreamPlayback::update(double p_delta) {
+void ETVideoStreamPlayback::update_internal(double p_delta) {
 	if (paused || !playing) {
 		return;
 	}
@@ -120,10 +123,17 @@ void ETVideoStreamPlayback::update(double p_delta) {
 		}
 	}
 
-	Vector<float> audio_frames = decoder->get_decoded_audio_frames();
+	PackedFloat32Array audio_frames = decoder->get_decoded_audio_frames();
+
+#ifdef GDEXTENSION
+	if (audio_frames.size() > 0) {
+		mix_audio(audio_frames.size() / decoder->get_audio_channel_count(), audio_frames, 0);
+	}
+#else
 	if (mix_callback && audio_frames.size() > 0) {
 		mix_callback(mix_udata, audio_frames.ptr(), audio_frames.size() / decoder->get_audio_channel_count());
 	}
+#endif
 
 	buffering = decoder->is_running() && available_frames.size() == 0;
 
@@ -137,47 +147,53 @@ void ETVideoStreamPlayback::load(Ref<FileAccess> p_file_access) {
 
 	decoder->start_decoding();
 	Vector2i size = decoder->get_size();
-	texture = ImageTexture::create_from_image(Image::create_empty(size.x, size.y, false, Image::FORMAT_RGBA8));
+	if (decoder->get_decoder_state() != VideoDecoder::FAULTED) {
+#ifdef GDEXTENSION
+		texture = ImageTexture::create_from_image(Image::create(size.x, size.y, false, Image::FORMAT_RGBA8));
+#else
+		texture = ImageTexture::create_from_image(Image::create_empty(size.x, size.y, false, Image::FORMAT_RGBA8));
+#endif
+	}
 }
 
-bool ETVideoStreamPlayback::is_paused() const {
+bool ETVideoStreamPlayback::is_paused_internal() const {
 	return paused;
 }
 
-bool ETVideoStreamPlayback::is_playing() const {
+bool ETVideoStreamPlayback::is_playing_internal() const {
 	return playing;
 }
 
-void ETVideoStreamPlayback::set_paused(bool p_paused) {
+void ETVideoStreamPlayback::set_paused_internal(bool p_paused) {
 	paused = p_paused;
 }
 
-void ETVideoStreamPlayback::play() {
+void ETVideoStreamPlayback::play_internal() {
 	if (!playing) {
 		playback_position = 0;
 	} else {
-		stop();
+		stop_internal();
 	}
 	playing = true;
 }
 
-void ETVideoStreamPlayback::stop() {
+void ETVideoStreamPlayback::stop_internal() {
 	if (playing) {
 		clear();
-		seek(0);
+		seek_internal(0);
 	}
 	playing = false;
 }
 
-void ETVideoStreamPlayback::seek(double p_time) {
-	seek(p_time);
+void ETVideoStreamPlayback::seek_internal(double p_time) {
+	decoder->seek(p_time);
 }
 
-double ETVideoStreamPlayback::get_length() const {
+double ETVideoStreamPlayback::get_length_internal() const {
 	return decoder->get_duration();
 }
 
-Ref<Texture2D> ETVideoStreamPlayback::get_texture() const {
+Ref<Texture2D> ETVideoStreamPlayback::get_texture_internal() const {
 #ifdef FFMPEG_MT_GPU_UPLOAD
 	return last_frame_texture;
 #else
@@ -185,15 +201,15 @@ Ref<Texture2D> ETVideoStreamPlayback::get_texture() const {
 #endif
 }
 
-double ETVideoStreamPlayback::get_playback_position() const {
+double ETVideoStreamPlayback::get_playback_position_internal() const {
 	return playback_position;
 }
 
-int ETVideoStreamPlayback::get_mix_rate() const {
+int ETVideoStreamPlayback::get_mix_rate_internal() const {
 	return decoder->get_audio_mix_rate();
 }
 
-int ETVideoStreamPlayback::get_channels() const {
+int ETVideoStreamPlayback::get_channels_internal() const {
 	return decoder->get_audio_channel_count();
 }
 

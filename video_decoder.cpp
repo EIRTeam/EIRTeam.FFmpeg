@@ -29,8 +29,13 @@
 /**************************************************************************/
 
 #include "video_decoder.h"
-#include "modules/ffmpeg/ffmpeg_frame.h"
+#include "ffmpeg_frame.h"
+
 #include "tracy_import.h"
+
+#ifdef GDEXTENSION
+#include "gdextension_build/gdex_print.h"
+#endif
 
 extern "C" {
 #include "libavformat/avformat.h"
@@ -147,7 +152,6 @@ void VideoDecoder::recreate_codec_context() {
 
 	AVCodecParameters codec_params = *video_stream->codecpar;
 	BitField<HardwareVideoDecoder> target_hw_decoders = hw_decoding_allowed ? target_hw_video_decoders : HardwareVideoDecoder::NONE;
-	bool open_successful = false;
 
 	for (const AvailableDecoderInfo &info : get_available_decoders(format_context->iformat, codec_params.codec_id, target_hw_decoders)) {
 		if (video_codec_context != nullptr) {
@@ -176,7 +180,6 @@ void VideoDecoder::recreate_codec_context() {
 		ERR_CONTINUE_MSG(open_codec_result < 0, vformat("Error trying to open %s codec: %s", info.codec->get_codec_ptr()->name, ffmpeg_get_error_message(open_codec_result)));
 
 		print_line("Succesfully initialized decoder:", info.codec->get_codec_ptr()->name);
-		open_successful = true;
 		break;
 	}
 	if (!audio_stream) {
@@ -248,7 +251,11 @@ void VideoDecoder::_thread_func(void *userdata) {
 	AVPacket *packet = av_packet_alloc();
 	AVFrame *receive_frame = av_frame_alloc();
 
+#ifdef GDEXTENSION
+	String video_decoding_str = vformat("Video decoding %d", OS::get_singleton()->get_thread_caller_id());
+#else
 	String video_decoding_str = vformat("Video decoding %d", Thread::get_caller_id());
+#endif
 	CharString str = video_decoding_str.utf8();
 	const char *const video_decoding = str.ptr();
 	while (!decoder->thread_abort.is_set()) {
@@ -371,7 +378,7 @@ int created_texture = 0;
 
 void VideoDecoder::_read_decoded_frames(AVFrame *p_received_frame) {
 	Ref<Image> image;
-	Vector<uint8_t> unwrapped_frame;
+	PackedByteArray unwrapped_frame;
 	while (true) {
 		ZoneScopedN("Video decoder read decoded frame");
 		int receive_frame_result = avcodec_receive_frame(video_codec_context, p_received_frame);
@@ -403,7 +410,7 @@ void VideoDecoder::_read_decoded_frames(AVFrame *p_received_frame) {
 			}
 
 			if (!hw_transfer_frame.is_valid()) {
-				hw_transfer_frame = Ref<FFmpegFrame>(memnew(FFmpegFrame(callable_mp(this, &VideoDecoder::_hw_transfer_frame_return))));
+				hw_transfer_frame = Ref<FFmpegFrame>(memnew(FFmpegFrame(Ref<VideoDecoder>(this), (FFmpegFrame::return_frame_callback_t)&VideoDecoder::_hw_transfer_frame_return)));
 			}
 
 			int transfer_result = av_hwframe_transfer_data(hw_transfer_frame->get_frame(), p_received_frame, 0);
@@ -417,7 +424,7 @@ void VideoDecoder::_read_decoded_frames(AVFrame *p_received_frame) {
 			frame = hw_transfer_frame;
 		} else {
 			// copy data to a new AVFrame so that `receiveFrame` can be reused.
-			frame = Ref<FFmpegFrame>(memnew(FFmpegFrame(Callable())));
+			frame = Ref<FFmpegFrame>(memnew(FFmpegFrame()));
 			av_frame_move_ref(frame->get_frame(), p_received_frame);
 		}
 
@@ -526,12 +533,12 @@ void VideoDecoder::_read_decoded_audio_frames(AVFrame *p_received_frame) {
 	}
 }
 
-void VideoDecoder::_hw_transfer_frame_return(Ref<FFmpegFrame> p_hw_frame) {
-	hw_transfer_frames.push_back(p_hw_frame);
+void VideoDecoder::_hw_transfer_frame_return(Ref<VideoDecoder> p_decoder, Ref<FFmpegFrame> p_hw_frame) {
+	p_decoder->hw_transfer_frames.push_back(p_hw_frame);
 }
 
-void VideoDecoder::_scaler_frame_return(Ref<FFmpegFrame> p_scaler_frame) {
-	scaler_frames.push_back(p_scaler_frame);
+void VideoDecoder::_scaler_frame_return(Ref<VideoDecoder> p_decoder, Ref<FFmpegFrame> p_scaler_frame) {
+	p_decoder->scaler_frames.push_back(p_scaler_frame);
 }
 
 Ref<FFmpegFrame> VideoDecoder::_ensure_frame_pixel_format(Ref<FFmpegFrame> p_frame, AVPixelFormat p_target_pixel_format) {
@@ -558,11 +565,12 @@ Ref<FFmpegFrame> VideoDecoder::_ensure_frame_pixel_format(Ref<FFmpegFrame> p_fra
 		if (scaler_frames.size() > 0) {
 			scaler_frame = scaler_frames[0];
 			scaler_frames.pop_front();
+			print_line("REUSING SCALER FRAME");
 		}
 	}
 
 	if (!scaler_frame.is_valid()) {
-		scaler_frame = Ref<FFmpegFrame>(memnew(FFmpegFrame(callable_mp(this, &VideoDecoder::_scaler_frame_return))));
+		scaler_frame = Ref<FFmpegFrame>(memnew(FFmpegFrame(Ref<VideoDecoder>(this), (FFmpegFrame::return_frame_callback_t)&VideoDecoder::_scaler_frame_return)));
 	}
 
 	// (re)initialize the scaler frame if needed.
@@ -658,8 +666,7 @@ void VideoDecoder::start_decoding() {
 		}
 	}
 
-	thread = memnew(Thread);
-	thread->start(&VideoDecoder::_thread_func, (void *)this);
+	thread = memnew(std::thread(_thread_func, this));
 }
 
 int get_hw_video_decoder_score(AVHWDeviceType p_device_type) {
@@ -762,9 +769,9 @@ Vector<Ref<DecodedFrame>> VideoDecoder::get_decoded_frames() {
 	return frames;
 }
 
-Vector<float> VideoDecoder::get_decoded_audio_frames() {
+PackedFloat32Array VideoDecoder::get_decoded_audio_frames() {
 	MutexLock lock(audio_buffer_mutex);
-	Vector<float> buff;
+	PackedFloat32Array buff;
 	buff.resize(audio_buffer_count);
 	memcpy(buff.ptrw(), audio_buffer, audio_buffer_count * sizeof(float));
 	audio_buffer_count = 0;
@@ -816,7 +823,7 @@ VideoDecoder::VideoDecoder(Ref<FileAccess> p_file) :
 VideoDecoder::~VideoDecoder() {
 	if (thread != nullptr) {
 		thread_abort.set_to(true);
-		thread->wait_to_finish();
+		thread->join();
 	}
 
 	if (format_context != nullptr && input_opened) {

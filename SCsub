@@ -1,18 +1,21 @@
 #!/usr/bin/env python
 
-import ffmpeg_download
+from gdextension_build import ffmpeg_download
+from gdextension_build import methods
+from pathlib import Path
+import os
+
 Import("env")
 
-FFMPEG_DOWNLOAD_WINDOWS = "https://github.com/EIRTeam/FFmpeg-Builds/releases/download/autobuild-2023-07-23-11-40/ffmpeg-N-111601-g89f5124d0a-win64-lgpl-godot.zip"
-
 if not "RPATH" in env:
-    env.Append(RPATH=env.Literal('\\$$ORIGIN'))
+    env.Append(RPATH=env.Literal("\\$$ORIGIN"))
 
 env_ffmpeg = env.Clone()
 
+env_ffmpeg.Depends("thirdparty/ffmpeg/", "gdextension_build/ffmpeg_download.py")
 env_ffmpeg.CommandNoCache(
     "thirdparty/ffmpeg/",
-    "ffmpeg_download.py",
+    "gdextension_build/ffmpeg_download.py",
     env_ffmpeg.Run(ffmpeg_download.download_ffmpeg, "Downloading FFMPEG library"),
 )
 
@@ -24,19 +27,24 @@ sources = [x for x in Glob("*.cpp") if str(x) not in excluded]
 
 env_ffmpeg.Prepend(CPPPATH="thirdparty/ffmpeg/include")
 env.Append(LIBPATH="/home/eirexe/repos/godot-ph4/modules/ffmpeg/thirdparty/ffmpeg/lib")
-env.Append(LIBS=[
-    "avcodec",
-    "avfilter",
-    "avformat",
-    "avutil",
-    "swresample",
-    "swscale"
-])
+ffmpeg_libs = ["avcodec", "avfilter", "avformat", "avutil", "swresample", "swscale"]
+env.Append(LIBS=ffmpeg_libs)
 
+ffmpeg_libs_to_install = []
 
-env.Install("#bin", Glob("thirdparty/ffmpeg/lib/*.so"))
+if env["platform"] == "linuxbsd":
+    for lib in ffmpeg_libs:
+        # Make sure we copy the ffmpeg library with the correct version extension
+        lib_file_name = f"lib{lib}.so"
+        lib_so_path = f"thirdparty/ffmpeg/lib/{lib_file_name}"
+        if os.path.isfile(lib_so_path):
+            lib_soname = methods.get_soname(lib_so_path)
+            if lib_soname:
+                ffmpeg_libs_to_install.append(f"thirdparty/ffmpeg/lib/{lib_soname}")
 
-#env_ffmpeg.Append(CPPDEFINES=["FFMPEG_MT_GPU_UPLOAD"])
+env_ffmpeg.Install("#bin", ffmpeg_libs_to_install)
+
+# env_ffmpeg.Append(CPPDEFINES=["FFMPEG_MT_GPU_UPLOAD"])
 if ARGUMENTS.get("ffmpeg_shared", "no") == "yes":
     # Shared lib compilation
     env_ffmpeg.Append(CCFLAGS=["-fPIC"])
@@ -44,7 +52,7 @@ if ARGUMENTS.get("ffmpeg_shared", "no") == "yes":
     shared_lib = env_ffmpeg.SharedLibrary(target="#bin/ffmpeg", source=sources)
     shared_lib_shim = shared_lib[0].name.rsplit(".", 1)[0]
     env.Append(LIBPATH=["#bin"])
-    env.Append(LIBS=["libffmpeg.linuxbsd.editor.dev.x86_64"])
+    env.Append(LIBS=[shared_lib_shim])
 else:
     env_ffmpeg.add_source_files(module_obj, sources)
     env.Depends(module_obj, "thirdparty/ffmpeg/")

@@ -31,7 +31,9 @@
 #ifndef TRACY_IMPORT_H
 #define TRACY_IMPORT_H
 
+#ifndef GDEXTENSION
 #include "modules/modules_enabled.gen.h"
+#endif
 
 #ifdef MODULE_TRACY_ENABLED
 

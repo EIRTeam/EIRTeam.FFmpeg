@@ -31,20 +31,38 @@
 #ifndef FFMPEG_FRAME_H
 #define FFMPEG_FRAME_H
 
+#ifdef GDEXTENSION
+
+// Headers for building as GDExtension plug-in.
+#include <godot_cpp/classes/ref_counted.hpp>
+#include <godot_cpp/godot.hpp>
+
+using namespace godot;
+
+#else
+
 #include "core/object/ref_counted.h"
+
+#endif
 extern "C" {
 #include "libavutil/frame.h"
 }
 
 class FFmpegFrame : public RefCounted {
+public:
+	typedef void (*return_frame_callback_t)(Ref<RefCounted> p_instance, Ref<FFmpegFrame> p_frame);
+
+private:
 	AVFrame *frame = nullptr;
-	Callable return_func;
+	return_frame_callback_t return_func = nullptr;
+	Ref<RefCounted> return_instance;
 
 public:
 	AVFrame *get_frame() const;
 	double get_time() const;
 	void do_return();
-	FFmpegFrame(Callable p_return_func);
+	FFmpegFrame(Ref<RefCounted> p_return_func_instance, return_frame_callback_t p_return_func);
+	FFmpegFrame();
 	~FFmpegFrame();
 };
 

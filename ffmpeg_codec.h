@@ -33,8 +33,22 @@
 extern "C" {
 #include "libavcodec/avcodec.h"
 }
+
+#ifdef GDEXTENSION
+
+// Headers for building as GDExtension plug-in.
+#include <godot_cpp/classes/ref_counted.hpp>
+#include <godot_cpp/godot.hpp>
+#include <godot_cpp/templates/vector.hpp>
+
+using namespace godot;
+
+#else
+
 #include "core/object/ref_counted.h"
 #include "core/templates/vector.h"
+
+#endif
 
 class FFmpegCodec : public RefCounted {
 	const AVCodec *codec = nullptr;

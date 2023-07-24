@@ -29,8 +29,14 @@
 /**************************************************************************/
 
 #include "register_types.h"
+
+#ifdef GDEXTENSION
+#include "gdextension_build/gdex_print.h"
+#else
 #include "core/string/print_string.h"
-#include "modules/ffmpeg/et_video_stream.h"
+#endif
+
+#include "et_video_stream.h"
 
 static void print_codecs() {
 	const AVCodecDescriptor *desc = NULL;
@@ -72,3 +78,27 @@ void initialize_ffmpeg_module(ModuleInitializationLevel p_level) {
 
 void uninitialize_ffmpeg_module(ModuleInitializationLevel p_level) {
 }
+
+#ifdef GDEXTENSION
+
+#include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/core/defs.hpp>
+#include <godot_cpp/core/memory.hpp>
+
+using namespace godot;
+
+extern "C" {
+
+GDExtensionBool GDE_EXPORT ffmpeg_init(GDExtensionInterfaceGetProcAddress p_get_proc_address, const GDExtensionClassLibraryPtr p_library, GDExtensionInitialization *r_initialization) {
+	GDExtensionBinding::InitObject init_obj(p_get_proc_address, p_library, r_initialization);
+
+	init_obj.register_initializer(&initialize_ffmpeg_module);
+	init_obj.register_terminator(&uninitialize_ffmpeg_module);
+	init_obj.set_minimum_library_initialization_level(MODULE_INITIALIZATION_LEVEL_SERVERS);
+
+	return init_obj.init();
+}
+
+} // ! extern "C"
+
+#endif // ! GDEXTENSION

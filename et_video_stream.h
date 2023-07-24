@@ -31,11 +31,46 @@
 #ifndef ET_VIDEO_STREAM_H
 #define ET_VIDEO_STREAM_H
 
+#ifdef GDEXTENSION
+
+// Headers for building as GDExtension plug-in.
+#include <godot_cpp/classes/video_stream.hpp>
+#include <godot_cpp/classes/video_stream_playback.hpp>
+#include <godot_cpp/godot.hpp>
+#include <godot_cpp/templates/list.hpp>
+#include <godot_cpp/templates/vector.hpp>
+
+using namespace godot;
+
+#else
+
 #include "core/object/ref_counted.h"
-#include "core/templates/local_vector.h"
-#include "ffmpeg_frame.h"
 #include "scene/resources/video_stream.h"
+
+#endif
+
 #include "video_decoder.h"
+
+// We have to use this function redirection system for GDExtension because the naming conventions
+// for the functions we are supposed to override are different there
+
+#ifdef GDEXTENSION
+#define STREAM_FUNCNAME(funcname) _##funcname
+#else
+#define STREAM_FUNCNAME(funcname) funcname
+#endif
+
+#define STREAM_FUNC_REDIRECT_0_(retval, funcname, const) \
+	virtual retval STREAM_FUNCNAME(funcname)() const override { return funcname##_internal(); };
+
+#define STREAM_FUNC_REDIRECT_1_(retval, funcname, const, arg0type, arg0name) \
+	virtual retval STREAM_FUNCNAME(funcname)(arg0type arg0name) const override { return funcname##_internal(arg0name); };
+
+#define STREAM_FUNC_REDIRECT_0(retval, funcname) STREAM_FUNC_REDIRECT_0_(retval, funcname, );
+#define STREAM_FUNC_REDIRECT_0_CONST(retval, funcname) STREAM_FUNC_REDIRECT_0_(retval, funcname, const);
+
+#define STREAM_FUNC_REDIRECT_1(retval, funcname, arg0type, arg0name) STREAM_FUNC_REDIRECT_1_(retval, funcname, , arg0type, arg0name);
+#define STREAM_FUNC_REDIRECT_1_CONST(retval, funcname, arg0type, arg0name) STREAM_FUNC_REDIRECT_1_(retval, funcname, const, arg0type, arg0name);
 
 class ETVideoStreamPlayback : public VideoStreamPlayback {
 	GDCLASS(ETVideoStreamPlayback, VideoStreamPlayback);
@@ -59,37 +94,60 @@ class ETVideoStreamPlayback : public VideoStreamPlayback {
 	bool paused = false;
 	bool playing = false;
 
+private:
+	bool is_paused_internal() const;
+	void update_internal(double p_delta);
+	bool is_playing_internal() const;
+	void set_paused_internal(bool p_paused);
+	void play_internal();
+	void stop_internal();
+	void seek_internal(double p_time);
+	double get_length_internal() const;
+	Ref<Texture2D> get_texture_internal() const;
+	double get_playback_position_internal() const;
+	int get_mix_rate_internal() const;
+	int get_channels_internal() const;
+
 protected:
 	void clear();
+	static void _bind_methods(){}; // Required by GDExtension, do not remove
 
 public:
-	void update(double p_delta) override;
 	void load(Ref<FileAccess> p_file_access);
-	virtual bool is_paused() const override;
-	virtual bool is_playing() const override;
-	virtual void set_paused(bool p_paused) override;
-	virtual void play() override;
-	virtual void stop() override;
-	virtual void seek(double p_time) override;
-	virtual double get_length() const override;
-	virtual Ref<Texture2D> get_texture() const override;
-	virtual double get_playback_position() const override;
-	virtual int get_mix_rate() const override;
-	virtual int get_channels() const override;
+
+	STREAM_FUNC_REDIRECT_0_CONST(bool, is_paused);
+	STREAM_FUNC_REDIRECT_1(void, update, double, p_delta);
+	STREAM_FUNC_REDIRECT_0_CONST(bool, is_playing);
+	STREAM_FUNC_REDIRECT_1(void, set_paused, bool, p_paused);
+	STREAM_FUNC_REDIRECT_0(void, play);
+	STREAM_FUNC_REDIRECT_0(void, stop);
+	STREAM_FUNC_REDIRECT_1(void, seek, double, p_time);
+	STREAM_FUNC_REDIRECT_0_CONST(double, get_length);
+	STREAM_FUNC_REDIRECT_0_CONST(Ref<Texture2D>, get_texture);
+	STREAM_FUNC_REDIRECT_0_CONST(double, get_playback_position);
+	STREAM_FUNC_REDIRECT_0_CONST(int, get_mix_rate);
+	STREAM_FUNC_REDIRECT_0_CONST(int, get_channels);
 	ETVideoStreamPlayback();
 };
 
 class ETVideoStream : public VideoStream {
 	GDCLASS(ETVideoStream, VideoStream);
 
-public:
-	virtual Ref<VideoStreamPlayback> instantiate_playback() override {
+protected:
+	static void _bind_methods(){}; // Required by GDExtension, do not remove
+	Ref<VideoStreamPlayback> instantiate_playback_internal() {
+		Ref<FileAccess> fa = FileAccess::open(get_file(), FileAccess::READ);
+		if (!fa.is_valid()) {
+			return Ref<VideoStreamPlayback>();
+		}
 		Ref<ETVideoStreamPlayback> pb;
 		pb.instantiate();
-		Ref<FileAccess> fa = FileAccess::open(file, FileAccess::READ);
 		pb->load(fa);
 		return pb;
 	}
+
+public:
+	STREAM_FUNC_REDIRECT_0(Ref<VideoStreamPlayback>, instantiate_playback);
 };
 
 #endif // ET_VIDEO_STREAM_H

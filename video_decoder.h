@@ -33,19 +33,39 @@
 #ifndef VIDEO_DECODER_H
 #define VIDEO_DECODER_H
 
+#ifdef GDEXTENSION
+
+// Headers for building as GDExtension plug-in.
+#include "gdextension_build/command_queue_mt.h"
+#include <godot_cpp/classes/file_access.hpp>
+#include <godot_cpp/classes/image_texture.hpp>
+#include <godot_cpp/classes/mutex.hpp>
+#include <godot_cpp/classes/os.hpp>
+#include <godot_cpp/core/mutex_lock.hpp>
+#include <godot_cpp/godot.hpp>
+#include <godot_cpp/templates/list.hpp>
+
+using namespace godot;
+
+#else
+
 #include "core/io/file_access.h"
 #include "core/templates/command_queue_mt.h"
+#include "scene/resources/image_texture.h"
+
+#endif
+
 #include "ffmpeg_codec.h"
 #include "ffmpeg_frame.h"
-#include "scene/resources/image_texture.h"
 extern "C" {
 #include "libavformat/avformat.h"
 #include "libswresample/swresample.h"
 #include "libswscale/swscale.h"
 }
 
+#include <thread>
+
 class DecodedFrame : public RefCounted {
-	GDCLASS(DecodedFrame, RefCounted);
 	double time;
 	Ref<ImageTexture> texture;
 	Ref<Image> image;
@@ -63,8 +83,6 @@ public:
 };
 
 class VideoDecoder : public RefCounted {
-	GDCLASS(VideoDecoder, RefCounted);
-
 public:
 	enum HardwareVideoDecoder {
 		NONE = 0,
@@ -119,7 +137,7 @@ private:
 	List<Ref<FFmpegFrame>> scaler_frames;
 	Mutex decoded_frames_mutex;
 	Vector<Ref<DecodedFrame>> decoded_frames;
-	Thread *thread = nullptr;
+	std::thread *thread = nullptr;
 	SafeFlag thread_abort;
 
 	bool looping = false;
@@ -138,8 +156,8 @@ private:
 	void _read_decoded_frames(AVFrame *p_received_frame);
 	void _read_decoded_audio_frames(AVFrame *p_received_frame);
 
-	void _hw_transfer_frame_return(Ref<FFmpegFrame> p_hw_frame);
-	void _scaler_frame_return(Ref<FFmpegFrame> p_scaler_frame);
+	static void _hw_transfer_frame_return(Ref<VideoDecoder> p_decoder, Ref<FFmpegFrame> p_hw_frame);
+	static void _scaler_frame_return(Ref<VideoDecoder> p_decoder, Ref<FFmpegFrame> p_hw_frame);
 
 	Ref<FFmpegFrame> _ensure_frame_pixel_format(Ref<FFmpegFrame> p_frame, AVPixelFormat p_target_pixel_format);
 	AVFrame *_ensure_frame_audio_format(AVFrame *p_frame, AVSampleFormat p_target_audio_format);
@@ -155,7 +173,7 @@ public:
 	void return_frames(Vector<Ref<DecodedFrame>> p_frames);
 	void return_frame(Ref<DecodedFrame> p_frame);
 	Vector<Ref<DecodedFrame>> get_decoded_frames();
-	Vector<float> get_decoded_audio_frames();
+	PackedFloat32Array get_decoded_audio_frames();
 	DecoderState get_decoder_state() const;
 	double get_last_decoded_frame_time() const;
 	bool is_running() const;

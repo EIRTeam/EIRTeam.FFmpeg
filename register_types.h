@@ -31,7 +31,12 @@
 #ifndef FFMPEG_REGISTER_TYPES_H
 #define FFMPEG_REGISTER_TYPES_H
 
+#ifdef GDEXTENSION
+#include <godot_cpp/core/class_db.hpp>
+using namespace godot;
+#else
 #include "modules/register_module_types.h"
+#endif
 
 void initialize_ffmpeg_module(ModuleInitializationLevel p_level);
 void uninitialize_ffmpeg_module(ModuleInitializationLevel p_level);
