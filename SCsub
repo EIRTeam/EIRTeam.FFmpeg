@@ -4,6 +4,7 @@ from gdextension_build import ffmpeg_download
 from gdextension_build import methods
 from pathlib import Path
 import os
+import SCons
 
 Import("env")
 
@@ -12,11 +13,29 @@ if not "RPATH" in env:
 
 env_ffmpeg = env.Clone()
 
-env_ffmpeg.Depends("thirdparty/ffmpeg/", "gdextension_build/ffmpeg_download.py")
-env_ffmpeg.CommandNoCache(
-    "thirdparty/ffmpeg/",
-    "gdextension_build/ffmpeg_download.py",
-    env_ffmpeg.Run(ffmpeg_download.download_ffmpeg, "Downloading FFMPEG library"),
+
+def _jal_emitter(target, source, env):
+    print("EMITTER!!!")
+    target += ["" + x for x in ffmpeg_download.get_ffmpeg_install_sources(os.path.dirname(target[0].get_path()))]
+    print(target)
+    return target, source
+
+
+def Command2(env, target, source, action, **kw):
+    """Builds the supplied target files from the supplied
+    source files using the supplied action.  Action may
+    be any type that the Builder constructor will accept
+    for an action."""
+    bkw = {"action": action, "target_factory": env.fs.Entry, "source_factory": env.fs.Entry, "emitter": _jal_emitter}
+
+    bld = SCons.Builder.Builder(**bkw)
+    return bld(env, target, source, **kw)
+
+
+FFMPEG_DUMMY = "thirdparty/ffmpeg/LICENSE.txt"
+
+ffmpeg_download_action = ffmpeg_download.ffmpeg_download_builder(
+    env_ffmpeg, FFMPEG_DUMMY, "gdextension_build/ffmpeg_download.py"
 )
 
 module_obj = []
@@ -26,23 +45,12 @@ excluded = []
 sources = [x for x in Glob("*.cpp") if str(x) not in excluded]
 
 env_ffmpeg.Prepend(CPPPATH="thirdparty/ffmpeg/include")
-env.Append(LIBPATH="/home/eirexe/repos/godot-ph4/modules/ffmpeg/thirdparty/ffmpeg/lib")
+env.Append(LIBPATH="thirdparty/ffmpeg/lib")
 ffmpeg_libs = ["avcodec", "avfilter", "avformat", "avutil", "swresample", "swscale"]
 env.Append(LIBS=ffmpeg_libs)
 
-ffmpeg_libs_to_install = []
-
-if env["platform"] == "linuxbsd":
-    for lib in ffmpeg_libs:
-        # Make sure we copy the ffmpeg library with the correct version extension
-        lib_file_name = f"lib{lib}.so"
-        lib_so_path = f"thirdparty/ffmpeg/lib/{lib_file_name}"
-        if os.path.isfile(lib_so_path):
-            lib_soname = methods.get_soname(lib_so_path)
-            if lib_soname:
-                ffmpeg_libs_to_install.append(f"thirdparty/ffmpeg/lib/{lib_soname}")
-
-env_ffmpeg.Install("#bin", ffmpeg_libs_to_install)
+ffmpeg_install_action = ffmpeg_download.ffmpeg_install(env_ffmpeg, "#bin", "thirdparty/ffmpeg")
+env_ffmpeg.Depends(ffmpeg_install_action, ffmpeg_download_action)
 
 # env_ffmpeg.Append(CPPDEFINES=["FFMPEG_MT_GPU_UPLOAD"])
 if ARGUMENTS.get("ffmpeg_shared", "no") == "yes":
@@ -53,7 +61,8 @@ if ARGUMENTS.get("ffmpeg_shared", "no") == "yes":
     shared_lib_shim = shared_lib[0].name.rsplit(".", 1)[0]
     env.Append(LIBPATH=["#bin"])
     env.Append(LIBS=[shared_lib_shim])
+    env.Depends(shared_lib, ffmpeg_install_action)
 else:
     env_ffmpeg.add_source_files(module_obj, sources)
-    env.Depends(module_obj, "thirdparty/ffmpeg/")
+    env.Depends(module_obj, ffmpeg_install_action)
     env.modules_sources += module_obj

@@ -18,15 +18,8 @@ time_at_start = time.time()
 
 env = SConscript("./godot-cpp/SConstruct")
 env.__class__.disable_warnings = methods.disable_warnings
+env.__class__.Run = methods.Run
 
-
-FFMPEG_DUMMY = "../thirdparty/ffmpeg/LICENSE.txt"
-ffmpeg_download_action = methods.CommandNoCache(
-    env,
-    FFMPEG_DUMMY,
-    "ffmpeg_download.py",
-    methods.Run(env, ffmpeg_download.download_ffmpeg, "Downloading FFMPEG library"),
-)
 
 opts = Variables([], ARGUMENTS)
 opts.Add(BoolVariable("verbose", "Enable verbose output for the compilation", False))
@@ -44,20 +37,8 @@ sources.extend(Glob("*.cpp"))
 env.Prepend(CPPPATH="../thirdparty/ffmpeg/include")
 env.Append(LIBPATH="../thirdparty/ffmpeg/lib")
 ffmpeg_libs = ["avcodec", "avfilter", "avformat", "avutil", "swresample", "swscale"]
+
 env.Append(LIBS=ffmpeg_libs)
-
-ffmpeg_libs_to_install = []
-
-if env["platform"] == "linux":
-    for lib in ffmpeg_libs:
-        # Make sure we copy the ffmpeg library with the correct version extension
-        lib_file_name = f"lib{lib}.so"
-        lib_so_path = f"../thirdparty/ffmpeg/lib/{lib_file_name}"
-        print(lib_so_path)
-        if os.path.isfile(lib_so_path):
-            lib_soname = methods.get_soname(lib_so_path)
-            if lib_soname:
-                ffmpeg_libs_to_install.append(f"../thirdparty/ffmpeg/lib/{lib_soname}")
 
 if env["platform"] == "macos":
     methods.write_macos_plist(
@@ -76,9 +57,11 @@ else:
         source=sources,
     )
 
-env.Depends(library, FFMPEG_DUMMY)
-
-print("MAESTRULI", ffmpeg_libs_to_install)
+FFMPEG_DUMMY = "../thirdparty/ffmpeg/LICENSE.txt"
+ffmpeg_download_action = ffmpeg_download.ffmpeg_download_builder(env, FFMPEG_DUMMY, "ffmpeg_download.py")
+ffmpeg_install_action = ffmpeg_download.ffmpeg_install(env, "#bin", "../thirdparty/ffmpeg")
+env.Depends(ffmpeg_install_action, ffmpeg_download_action)
+env.Depends(library, ffmpeg_install_action)
 
 Default(library)
 
