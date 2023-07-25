@@ -40,7 +40,7 @@ def get_download_url(env):
 
 
 def download_ffmpeg(target, source, env):
-    dst = os.path.dirname(target[0])
+    dst = os.path.dirname(target[0].get_path())
     if os.path.exists(dst):
         shutil.rmtree(dst)
 
@@ -59,7 +59,7 @@ def download_ffmpeg(target, source, env):
         # Get the first folder
         common_path = os.path.commonpath(f.getnames()) + "/"
         f.extractall(dst, members=rewrite_subfolder_paths(f, common_path))
-        os.remove(local_filename)
+    os.remove(local_filename)
 
 
 def _ffmpeg_emitter(target, source, env):
@@ -69,7 +69,7 @@ def _ffmpeg_emitter(target, source, env):
 
 def ffmpeg_download_builder(env, target, source):
     bkw = {
-        "action": env.Run(download_ffmpeg, "Downloading FFMPEG library"),
+        "action": env.Run(download_ffmpeg, "Downloading FFMPEG library", False),
         "target_factory": env.fs.Entry,
         "source_factory": env.fs.Entry,
         "emitter": _ffmpeg_emitter,
