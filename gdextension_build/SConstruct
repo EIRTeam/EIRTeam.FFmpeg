@@ -61,7 +61,7 @@ FFMPEG_DUMMY = "../thirdparty/ffmpeg/LICENSE.txt"
 ffmpeg_download_action = ffmpeg_download.ffmpeg_download_builder(env, FFMPEG_DUMMY, "ffmpeg_download.py")
 ffmpeg_install_action = ffmpeg_download.ffmpeg_install(env, "#bin", "../thirdparty/ffmpeg")
 env.Depends(ffmpeg_install_action, ffmpeg_download_action)
-env.Depends(library, ffmpeg_install_action)
+env.Depends(sources, ffmpeg_install_action)
 
 Default(library)
 

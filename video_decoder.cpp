@@ -70,7 +70,7 @@ bool is_hardware_pixel_format(AVPixelFormat p_fmt) {
 }
 
 String ffmpeg_get_error_message(int p_error_code) {
-	const ulong buffer_size = 256;
+	const uint64_t buffer_size = 256;
 	Vector<char> buffer;
 	buffer.resize(buffer_size);
 

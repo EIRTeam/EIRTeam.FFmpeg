@@ -51,6 +51,7 @@ env.Append(LIBS=ffmpeg_libs)
 
 ffmpeg_install_action = ffmpeg_download.ffmpeg_install(env_ffmpeg, "#bin", "thirdparty/ffmpeg")
 env_ffmpeg.Depends(ffmpeg_install_action, ffmpeg_download_action)
+env_ffmpeg.Depends(sources, ffmpeg_install_action)
 
 # env_ffmpeg.Append(CPPDEFINES=["FFMPEG_MT_GPU_UPLOAD"])
 if ARGUMENTS.get("ffmpeg_shared", "no") == "yes":
@@ -61,8 +62,6 @@ if ARGUMENTS.get("ffmpeg_shared", "no") == "yes":
     shared_lib_shim = shared_lib[0].name.rsplit(".", 1)[0]
     env.Append(LIBPATH=["#bin"])
     env.Append(LIBS=[shared_lib_shim])
-    env.Depends(shared_lib, ffmpeg_install_action)
 else:
     env_ffmpeg.add_source_files(module_obj, sources)
-    env.Depends(module_obj, ffmpeg_install_action)
     env.modules_sources += module_obj
