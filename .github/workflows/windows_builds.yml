@@ -1,0 +1,70 @@
+name: 🏁 Windows Builds
+on:
+  workflow_call:
+
+# Global Settings
+# SCONS_CACHE for windows must be set in the build environment
+env:
+  # Used for the cache key. Add version suffix to force clean build.
+  GODOT_BASE_BRANCH: master
+  SCONSFLAGS: verbose=yes warnings=extra werror=yes module_text_server_fb_enabled=yes
+  SCONS_CACHE_MSVC_CONFIG: true
+
+concurrency:
+  group: ci-${{github.actor}}-${{github.head_ref || github.run_number}}-${{github.ref}}-windows
+  cancel-in-progress: true
+
+jobs:
+  build-windows:
+    # Windows 10 with latest image
+    runs-on: "windows-latest"
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Editor (target=editor)
+            cache-name: windows-editor
+            target: editor
+            # Skip debug symbols, they're way too big with MSVC.
+            sconsflags: debug_symbols=no vsproj=yes windows_subsystem=console
+            bin: "./bin/godot.windows.editor.x86_64.exe"
+
+          - name: Template (target=template_release)
+            cache-name: windows-template
+            target: template_release
+            sconsflags: debug_symbols=no
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Setup Godot build cache
+        uses: ./.github/actions/cache
+        with:
+          cache-name: ${{ matrix.cache-name }}
+        continue-on-error: true
+
+      - name: Setup python and scons
+        uses: ./.github/actions/deps
+
+      - name: Setup MSVC problem matcher
+        uses: ammaraskar/msvc-problem-matcher@master
+
+      - name: Compilation
+        uses: ./.github/actions/build
+        with:
+          sconsflags: ${{ env.SCONSFLAGS }} ${{ matrix.sconsflags }}
+          platform: windows
+          target: ${{ matrix.target }}
+          tests: ${{ matrix.tests }}
+
+      - name: Prepare artifact
+        run: |
+          Remove-Item bin/* -Include *.exp,*.lib,*.pdb -Force
+
+      - name: Upload artifact
+        uses: ./.github/actions/upload-artifact
+        with:
+          name: ${{ matrix.cache-name }}

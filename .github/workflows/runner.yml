@@ -1,0 +1,16 @@
+name: 🔗 GHA
+on: [push, pull_request]
+
+concurrency:
+  group: ci-${{github.actor}}-${{github.head_ref || github.run_number}}-${{github.ref}}-runner
+  cancel-in-progress: true
+
+jobs:
+  windows-build:
+    name: 🏁 Windows
+    needs: static-checks
+    uses: ./.github/workflows/windows_builds.yml
+    
+  static-checks:
+    name: 📊 Static checks
+    uses: ./.github/workflows/static_checks.yml

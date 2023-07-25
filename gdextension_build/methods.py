@@ -3,6 +3,8 @@ import sys
 import functools
 import re
 import subprocess
+import uuid
+import json
 
 
 def no_verbose(sys, env):
@@ -106,6 +108,9 @@ def write_macos_plist(target, binary_name, identifier, name):
     f.write(f"\t<string>10.14</string>\n")
     f.write(f"</dict>\n")
     f.write(f"</plist>\n")
+
+
+JSON_SERIALIZABLE_TYPES = (bool, int, float, str)
 
 
 def run_in_subprocess(builder_function):
