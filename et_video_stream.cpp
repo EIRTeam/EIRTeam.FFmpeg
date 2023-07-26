@@ -34,6 +34,8 @@
 #include "gdextension_build/gdex_print.h"
 #endif
 
+#include "tracy_import.h"
+
 void ETVideoStreamPlayback::seek_into_sync() {
 	decoder->seek(playback_position);
 	Vector<Ref<DecodedFrame>> decoded_frames;
@@ -42,6 +44,7 @@ void ETVideoStreamPlayback::seek_into_sync() {
 	}
 	decoder->return_frames(decoded_frames);
 	available_frames.clear();
+	available_audio_frames.clear();
 }
 
 double ETVideoStreamPlayback::get_current_frame_time() {
@@ -59,7 +62,18 @@ bool ETVideoStreamPlayback::check_next_frame_valid(Ref<DecodedFrame> p_decoded_f
 	return p_decoded_frame->get_time() <= playback_position && Math::abs(p_decoded_frame->get_time() - playback_position) < LENIENCE_BEFORE_SEEK;
 }
 
+bool ETVideoStreamPlayback::check_next_audio_frame_valid(Ref<DecodedAudioFrame> p_decoded_frame) {
+	// in the case of looping, we may start a seek back to the beginning but still receive some lingering frames from the end of the last loop. these should be allowed to continue playing.
+	if (looping && Math::abs((p_decoded_frame->get_time() - decoder->get_duration()) - playback_position) < LENIENCE_BEFORE_SEEK)
+		return true;
+
+	return p_decoded_frame->get_time() <= playback_position && Math::abs(p_decoded_frame->get_time() - playback_position) < LENIENCE_BEFORE_SEEK;
+}
+
+const char *const upd_str = "update_internal";
+
 void ETVideoStreamPlayback::update_internal(double p_delta) {
+	ZoneScopedN("update_internal");
 	if (paused || !playing) {
 		return;
 	}
@@ -94,6 +108,8 @@ void ETVideoStreamPlayback::update_internal(double p_delta) {
 	bool got_new_frame = false;
 
 	while (available_frames.size() > 0 && check_next_frame_valid(available_frames[0])) {
+		ZoneScopedN("frame_receive");
+
 		if (last_frame.is_valid()) {
 			decoder->return_frame(last_frame);
 		}
@@ -109,8 +125,10 @@ void ETVideoStreamPlayback::update_internal(double p_delta) {
 	if (got_new_frame) {
 		if (texture.is_valid()) {
 			if (texture->get_size() != last_frame_image->get_size() || texture->get_format() != last_frame_image->get_format()) {
+				ZoneScopedN("Image update slow");
 				texture->set_image(last_frame_image); // should never happen, but life has many doors ed-boy...
 			} else {
+				ZoneScopedN("Image update fast");
 				texture->update(last_frame_image);
 			}
 		}
@@ -123,17 +141,22 @@ void ETVideoStreamPlayback::update_internal(double p_delta) {
 		}
 	}
 
-	PackedFloat32Array audio_frames = decoder->get_decoded_audio_frames();
-
+	while (available_audio_frames.size() > 0 && check_next_audio_frame_valid(available_audio_frames[0])) {
+		ZoneScopedN("Audio mix");
+		Ref<DecodedAudioFrame> audio_frame = available_audio_frames[0];
+		int sample_count = audio_frame->get_sample_data().size() / decoder->get_audio_channel_count();
 #ifdef GDEXTENSION
-	if (audio_frames.size() > 0) {
-		mix_audio(audio_frames.size() / decoder->get_audio_channel_count(), audio_frames, 0);
-	}
+		mix_audio(sample_count, audio_frame->get_sample_data(), 0);
 #else
-	if (mix_callback && audio_frames.size() > 0) {
-		mix_callback(mix_udata, audio_frames.ptr(), audio_frames.size() / decoder->get_audio_channel_count());
-	}
+		mix_callback(mix_udata, audio_frame->get_sample_data().ptr(), sample_count);
 #endif
+		available_audio_frames.pop_front();
+	}
+	if (available_audio_frames.size() == 0) {
+		for (Ref<DecodedAudioFrame> frame : decoder->get_decoded_audio_frames()) {
+			available_audio_frames.push_back(frame);
+		}
+	}
 
 	buffering = decoder->is_running() && available_frames.size() == 0;
 
@@ -186,7 +209,10 @@ void ETVideoStreamPlayback::stop_internal() {
 }
 
 void ETVideoStreamPlayback::seek_internal(double p_time) {
-	decoder->seek(p_time);
+	decoder->seek(p_time * 1000.0f);
+	available_frames.clear();
+	available_audio_frames.clear();
+	playback_position = p_time * 1000.0f;
 }
 
 double ETVideoStreamPlayback::get_length_internal() const {
@@ -202,7 +228,7 @@ Ref<Texture2D> ETVideoStreamPlayback::get_texture_internal() const {
 }
 
 double ETVideoStreamPlayback::get_playback_position_internal() const {
-	return playback_position;
+	return playback_position / 1000.0;
 }
 
 int ETVideoStreamPlayback::get_mix_rate_internal() const {
@@ -220,6 +246,7 @@ void ETVideoStreamPlayback::clear() {
 	last_frame.unref();
 	last_frame_texture.unref();
 	available_frames.clear();
+	available_audio_frames.clear();
 	frames_processed = 0;
 	playing = false;
 }

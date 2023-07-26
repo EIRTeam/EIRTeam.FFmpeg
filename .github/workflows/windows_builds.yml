@@ -1,56 +1,50 @@
 name: 🏁 Windows Builds
 on:
   workflow_call:
+    inputs:
+      target:
+        required: true
+        type: string
 
 # Global Settings
 # SCONS_CACHE for windows must be set in the build environment
 env:
   # Used for the cache key. Add version suffix to force clean build.
   GODOT_BASE_BRANCH: master
-  SCONSFLAGS: verbose=yes warnings=extra werror=yes module_text_server_fb_enabled=yes
   SCONS_CACHE_MSVC_CONFIG: true
 
 concurrency:
-  group: ci-${{github.actor}}-${{github.head_ref || github.run_number}}-${{github.ref}}-windows
   cancel-in-progress: true
+  group: ci-${{github.actor}}-${{github.head_ref || github.run_number}}-${{github.ref}}-windows-${{ inputs.target }}
 
 jobs:
   build-windows:
     # Windows 10 with latest image
-    runs-on: "windows-latest"
+    runs-on: "ubuntu-20.04"
     name: ${{ matrix.name }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - name: Editor (target=editor)
-            cache-name: windows-editor
-            target: editor
+          - name: Windows build - ${{ inputs.target }}
+            cache-name: windows
+            target: ${{ inputs.target }}
             # Skip debug symbols, they're way too big with MSVC.
-            sconsflags: debug_symbols=no vsproj=yes windows_subsystem=console
-            bin: "./bin/godot.windows.editor.x86_64.exe"
-
-          - name: Template (target=template_release)
-            cache-name: windows-template
-            target: template_release
-            sconsflags: debug_symbols=no
-
+            sconsflags: debug_symbols=no use_mingw=yes
     steps:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
 
-      - name: Setup Godot build cache
-        uses: ./.github/actions/cache
-        with:
-          cache-name: ${{ matrix.cache-name }}
-        continue-on-error: true
+      - name: Install mingw64
+        shell: sh
+        run: |
+          sudo apt-get install mingw-w64
+          sudo update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix
+          sudo update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix
 
       - name: Setup python and scons
         uses: ./.github/actions/deps
-
-      - name: Setup MSVC problem matcher
-        uses: ammaraskar/msvc-problem-matcher@master
 
       - name: Compilation
         uses: ./.github/actions/build
@@ -59,12 +53,16 @@ jobs:
           platform: windows
           target: ${{ matrix.target }}
           tests: ${{ matrix.tests }}
-
-      - name: Prepare artifact
+      - name: Calculate short sha
+        id: vars
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+      - name: Pack build
+        shell: sh
         run: |
-          Remove-Item bin/* -Include *.exp,*.lib,*.pdb -Force
-
+          cd ./gdextension_build/build
+          zip -9 -r eirteam-ffmpeg-${{ steps.vars.outputs.sha_short }}-${{ inputs.target }}.zip *
       - name: Upload artifact
         uses: ./.github/actions/upload-artifact
         with:
-          name: ${{ matrix.cache-name }}
+          name: windows
+          path: ./gdextension_build/build/*.zip

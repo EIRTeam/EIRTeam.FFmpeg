@@ -20,6 +20,7 @@ env = SConscript("./godot-cpp/SConstruct")
 env.__class__.disable_warnings = methods.disable_warnings
 env.__class__.Run = methods.Run
 
+addon_dir = "build/addons/ffmpeg/"
 
 opts = Variables([], ARGUMENTS)
 opts.Add(BoolVariable("verbose", "Enable verbose output for the compilation", False))
@@ -40,27 +41,39 @@ ffmpeg_libs = ["avcodec", "avfilter", "avformat", "avutil", "swresample", "swsca
 
 env.Append(LIBS=ffmpeg_libs)
 
+if env["platform"] == "windows" and sys.platform == "win32" and not env.get("is_msvc", False):
+    # Workaround for https://github.com/godotengine/godot-cpp/issues/1064
+    env.Append(CCFLAGS=["-O3", "-Wwrite-strings"])
+    env.Append(
+        LINKFLAGS=[
+            "-static",
+            "-Wl,--no-undefined",
+            "-static-libgcc",
+            "-static-libstdc++",
+        ]
+    )
 if env["platform"] == "macos":
     methods.write_macos_plist(
-        f'./bin/libgdffmpeg.macos.{env["target"]}.framework',
+        f'{addon_dir}libgdffmpeg.macos.{env["target"]}.framework',
         f'libgdffmpeg_advanced.macos.{env["target"]}',
         "org.godotengine.ffmpeg",
         "FFmpeg for Godot",
     )
     library = env.SharedLibrary(
-        f'./bin/libgdffmpeg.macos.{env["target"]}.framework/libgdffmpeg_advanced.macos.{env["target"]}',
+        f'{addon_dir}bin/libgdffmpeg.macos.{env["target"]}.framework/libgdffmpeg_advanced.macos.{env["target"]}',
         source=sources,
     )
 else:
     library = env.SharedLibrary(
-        f'./bin/libgdffmpeg{env["suffix"]}{env["SHLIBSUFFIX"]}',
+        f'{addon_dir}libgdffmpeg{env["suffix"]}{env["SHLIBSUFFIX"]}',
         source=sources,
     )
 
 FFMPEG_DUMMY = "../thirdparty/ffmpeg/LICENSE.txt"
 ffmpeg_download_action = ffmpeg_download.ffmpeg_download_builder(env, FFMPEG_DUMMY, "ffmpeg_download.py")
-ffmpeg_install_action = ffmpeg_download.ffmpeg_install(env, "#bin", "../thirdparty/ffmpeg")
+ffmpeg_install_action = ffmpeg_download.ffmpeg_install(env, f"#{addon_dir}", "../thirdparty/ffmpeg")
 env.Depends(ffmpeg_install_action, ffmpeg_download_action)
+env.Depends(sources, env.Install(addon_dir, "ffmpeg.gdextension"))
 env.Depends(sources, ffmpeg_install_action)
 
 Default(library)

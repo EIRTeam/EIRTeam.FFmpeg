@@ -33,4 +33,4 @@ runs:
         cd gdextension_build
         echo "Building with flags:" platform=${{ inputs.platform }} target=${{ inputs.target }} ${{ env.SCONSFLAGS }}
         scons platform=${{ inputs.platform }} target=${{ inputs.target }} ${{ env.SCONSFLAGS }}
-        ls -l bin/
+        ls -l build/addons/ffmpeg/

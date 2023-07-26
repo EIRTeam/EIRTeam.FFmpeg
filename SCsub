@@ -8,29 +8,11 @@ import SCons
 
 Import("env")
 
-if not "RPATH" in env:
-    env.Append(RPATH=env.Literal("\\$$ORIGIN"))
+if env["platform"] == "linuxbsd":
+    if not "RPATH" in env:
+        env.Append(RPATH=env.Literal("\\$$ORIGIN"))
 
 env_ffmpeg = env.Clone()
-
-
-def _jal_emitter(target, source, env):
-    print("EMITTER!!!")
-    target += ["" + x for x in ffmpeg_download.get_ffmpeg_install_sources(os.path.dirname(target[0].get_path()))]
-    print(target)
-    return target, source
-
-
-def Command2(env, target, source, action, **kw):
-    """Builds the supplied target files from the supplied
-    source files using the supplied action.  Action may
-    be any type that the Builder constructor will accept
-    for an action."""
-    bkw = {"action": action, "target_factory": env.fs.Entry, "source_factory": env.fs.Entry, "emitter": _jal_emitter}
-
-    bld = SCons.Builder.Builder(**bkw)
-    return bld(env, target, source, **kw)
-
 
 FFMPEG_DUMMY = "thirdparty/ffmpeg/LICENSE.txt"
 
@@ -45,9 +27,16 @@ excluded = []
 sources = [x for x in Glob("*.cpp") if str(x) not in excluded]
 
 env_ffmpeg.Prepend(CPPPATH="thirdparty/ffmpeg/include")
-env.Append(LIBPATH="thirdparty/ffmpeg/lib")
+env.Append(LIBPATH=["#modules/ffmpeg/thirdparty/ffmpeg/lib"])
+
 ffmpeg_libs = ["avcodec", "avfilter", "avformat", "avutil", "swresample", "swscale"]
-env.Append(LIBS=ffmpeg_libs)
+
+if env.msvc:
+    # MSVC: Think Different(tm)
+    env.Append(LINKFLAGS=[x + ".lib" for x in ffmpeg_libs])
+else:
+    # mingw
+    env.Append(LIBS=ffmpeg_libs)
 
 ffmpeg_install_action = ffmpeg_download.ffmpeg_install(env_ffmpeg, "#bin", "thirdparty/ffmpeg")
 env_ffmpeg.Depends(ffmpeg_install_action, ffmpeg_download_action)
