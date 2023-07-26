@@ -82,6 +82,16 @@ public:
 	DecodedFrame(double p_time, Ref<Image> p_image);
 };
 
+class DecodedAudioFrame : public RefCounted {
+	double time;
+
+public:
+	PackedFloat32Array sample_data;
+	double get_time() const;
+	PackedFloat32Array get_sample_data() const;
+	DecodedAudioFrame(double p_time) { time = p_time; };
+};
+
 class VideoDecoder : public RefCounted {
 public:
 	enum HardwareVideoDecoder {
@@ -104,9 +114,8 @@ public:
 	};
 
 private:
-	static const int AUDIO_BUFFER_SIZE = 4096;
-	float audio_buffer[AUDIO_BUFFER_SIZE];
-	int audio_buffer_count = 0;
+	Vector<Ref<DecodedAudioFrame>> decoded_audio_frames;
+
 	Mutex audio_buffer_mutex;
 
 	SwsContext *sws_context = nullptr;
@@ -151,7 +160,7 @@ private:
 	void _seek_command(double p_target_timestamp);
 	static void _thread_func(void *userdata);
 	void _decode_next_frame(AVPacket *p_packet, AVFrame *p_receive_frame);
-	int _send_packet(AVFrame *p_receive_frame, AVPacket *p_packet);
+	int _send_packet(AVCodecContext *p_codec_context, AVFrame *p_receive_frame, AVPacket *p_packet);
 	void _try_disable_hw_decoding(int p_error_code);
 	void _read_decoded_frames(AVFrame *p_received_frame);
 	void _read_decoded_audio_frames(AVFrame *p_received_frame);
@@ -173,7 +182,7 @@ public:
 	void return_frames(Vector<Ref<DecodedFrame>> p_frames);
 	void return_frame(Ref<DecodedFrame> p_frame);
 	Vector<Ref<DecodedFrame>> get_decoded_frames();
-	PackedFloat32Array get_decoded_audio_frames();
+	Vector<Ref<DecodedAudioFrame>> get_decoded_audio_frames();
 	DecoderState get_decoder_state() const;
 	double get_last_decoded_frame_time() const;
 	bool is_running() const;

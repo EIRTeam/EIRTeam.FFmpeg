@@ -79,6 +79,7 @@ class ETVideoStreamPlayback : public VideoStreamPlayback {
 
 	Ref<VideoDecoder> decoder;
 	List<Ref<DecodedFrame>> available_frames;
+	List<Ref<DecodedAudioFrame>> available_audio_frames;
 	Ref<DecodedFrame> last_frame;
 #ifndef FFMPEG_MT_GPU_UPLOAD
 	Ref<ImageTexture> last_frame_texture;
@@ -91,6 +92,7 @@ class ETVideoStreamPlayback : public VideoStreamPlayback {
 	void seek_into_sync();
 	double get_current_frame_time();
 	bool check_next_frame_valid(Ref<DecodedFrame> p_decoded_frame);
+	bool check_next_audio_frame_valid(Ref<DecodedAudioFrame> p_decoded_frame);
 	bool paused = false;
 	bool playing = false;
 

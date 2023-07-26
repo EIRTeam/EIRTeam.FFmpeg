@@ -1,16 +1,55 @@
 name: 🔗 GHA
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      doRelease:
+        description: 'Publish new release'
+        type: boolean
+        default: false
+        required: false
 
 concurrency:
   group: ci-${{github.actor}}-${{github.head_ref || github.run_number}}-${{github.ref}}-runner
   cancel-in-progress: true
 
 jobs:
-  windows-build:
+  windows-build-debug:
     name: 🏁 Windows
-    needs: static-checks
     uses: ./.github/workflows/windows_builds.yml
-    
+    with:
+      target: template_debug
+  windows-build-release:
+    name: 🏁 Windows Release
+    uses: ./.github/workflows/windows_builds.yml
+    with:
+      target: template_release
   static-checks:
     name: 📊 Static checks
     uses: ./.github/workflows/static_checks.yml
+  publish_release:
+    name: Publish release
+    needs: [windows-build-debug, windows-build-release]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: windows
+          path: artifacts
+      - name: Create release
+        id: create_release
+        run: |
+          set -xe
+          shopt -s nullglob
+          RELDATE="$(date +'%Y-%m-%d %H:%M')"
+          NAME="Auto-Build $RELDATE"
+          TAGNAME="autobuild-$(date +'%Y-%m-%d-%H-%M')"
+          hub release create $(for a in artifacts/*.{zip,tar.xz}; do echo -a $a; done) -m "$NAME" -t "master" "$TAGNAME"
+          echo "tag_name=${TAGNAME}" >> $GITHUB_OUTPUT
+          echo "rel_date=${RELDATE}" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_TOKEN: ${{ github.token }}

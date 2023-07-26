@@ -42,7 +42,7 @@ extern "C" {
 #include "libavformat/avio.h"
 }
 
-const int MAX_PENDING_FRAMES = 2;
+const int MAX_PENDING_FRAMES = 3;
 
 bool is_hardware_pixel_format(AVPixelFormat p_fmt) {
 	switch (p_fmt) {
@@ -308,7 +308,11 @@ void VideoDecoder::_decode_next_frame(AVPacket *p_packet, AVFrame *p_receive_fra
 		bool unref_packet = true;
 
 		if (p_packet->stream_index == video_stream->index || p_packet->stream_index == audio_stream->index) {
-			int send_packet_result = _send_packet(p_receive_frame, p_packet);
+			AVCodecContext *codec_ctx = video_codec_context;
+			if (has_audio && p_packet->stream_index == audio_stream->index) {
+				codec_ctx = audio_codec_context;
+			}
+			int send_packet_result = _send_packet(codec_ctx, p_receive_frame, p_packet);
 
 			if (send_packet_result == -EAGAIN) {
 				unref_packet = false;
@@ -319,7 +323,10 @@ void VideoDecoder::_decode_next_frame(AVPacket *p_packet, AVFrame *p_receive_fra
 			av_packet_unref(p_packet);
 		}
 	} else if (read_frame_result == AVERROR_EOF) {
-		_send_packet(p_receive_frame, nullptr);
+		_send_packet(video_codec_context, p_receive_frame, nullptr);
+		if (has_audio) {
+			_send_packet(audio_codec_context, p_receive_frame, nullptr);
+		}
 		if (looping) {
 			seek(0);
 		} else {
@@ -333,19 +340,18 @@ void VideoDecoder::_decode_next_frame(AVPacket *p_packet, AVFrame *p_receive_fra
 	}
 }
 
-int VideoDecoder::_send_packet(AVFrame *p_receive_frame, AVPacket *p_packet) {
+int VideoDecoder::_send_packet(AVCodecContext *p_codec_context, AVFrame *p_receive_frame, AVPacket *p_packet) {
 	ZoneScopedN("Video/audio decoder send packet");
 	// send the packet for decoding.
 	int send_packet_result;
 	{
 		ZoneNamedN(__avcodec_send_packet, "avcodec_send_packet", true);
-		AVCodecContext *codec_ctx = p_packet->stream_index == video_stream->index ? video_codec_context : audio_codec_context;
-		send_packet_result = avcodec_send_packet(codec_ctx, p_packet);
+		send_packet_result = avcodec_send_packet(p_codec_context, p_packet);
 	}
 	// Note: EAGAIN can be returned if there's too many pending frames, which we have to read,
 	// otherwise we would get stuck in an infinite loop.
 	if (send_packet_result == 0 || send_packet_result == -EAGAIN) {
-		if (p_packet->stream_index == video_stream->index) {
+		if (p_codec_context == video_codec_context) {
 			_read_decoded_frames(p_receive_frame);
 		} else {
 			_read_decoded_audio_frames(p_receive_frame);
@@ -519,17 +525,18 @@ void VideoDecoder::_read_decoded_audio_frames(AVFrame *p_received_frame) {
 
 		ERR_FAIL_COND_MSG(av_sample_fmt_is_planar((AVSampleFormat)frame->format), "Audio format should never be planar, bug?");
 
+		int data_size = av_samples_get_buffer_size(nullptr, frame->ch_layout.nb_channels, frame->nb_samples, (AVSampleFormat)frame->format, 0);
+		Ref<DecodedAudioFrame> audio_frame = memnew(DecodedAudioFrame(frame_time));
+		audio_frame->sample_data.resize(data_size / sizeof(float));
+		memcpy(audio_frame->sample_data.ptrw(), frame->data[0], data_size);
 		audio_buffer_mutex.lock();
-		int remaining_space = AUDIO_BUFFER_SIZE - audio_buffer_count;
-		// Frame is unlikely to not fit, but in such an extreme some audio weirdness should be ok me thinks
-		//int copy_buffer_size = frame->linesize[0];
-		int samples_to_copy = MIN(frame->linesize[0] / sizeof(float), remaining_space);
-		memcpy(audio_buffer + audio_buffer_count, frame->data[0], samples_to_copy * sizeof(float));
-		audio_buffer_count += samples_to_copy;
+		decoded_audio_frames.push_back(audio_frame);
 		audio_buffer_mutex.unlock();
 
 		av_frame_unref(p_received_frame);
-		av_frame_unref(frame);
+		if (frame != p_received_frame) {
+			av_frame_free(&frame);
+		}
 	}
 }
 
@@ -550,10 +557,6 @@ Ref<FFmpegFrame> VideoDecoder::_ensure_frame_pixel_format(Ref<FFmpegFrame> p_fra
 	int width = p_frame->get_frame()->width;
 	int height = p_frame->get_frame()->height;
 
-	if (p_frame->get_frame()->format == AV_PIX_FMT_NV12) {
-		p_target_pixel_format = AV_PIX_FMT_YUYV422;
-	}
-
 	sws_context = sws_getCachedContext(
 			sws_context,
 			width, height, (AVPixelFormat)p_frame->get_frame()->format,
@@ -565,7 +568,6 @@ Ref<FFmpegFrame> VideoDecoder::_ensure_frame_pixel_format(Ref<FFmpegFrame> p_fra
 		if (scaler_frames.size() > 0) {
 			scaler_frame = scaler_frames[0];
 			scaler_frames.pop_front();
-			print_line("REUSING SCALER FRAME");
 		}
 	}
 
@@ -608,14 +610,14 @@ Ref<FFmpegFrame> VideoDecoder::_ensure_frame_pixel_format(Ref<FFmpegFrame> p_fra
 }
 
 AVFrame *VideoDecoder::_ensure_frame_audio_format(AVFrame *p_frame, AVSampleFormat p_target_audio_format) {
-	ZoneScopedN("Video decoder rescale");
+	ZoneScopedN("Audio decoder rescale");
 	if (p_frame->format == p_target_audio_format) {
 		return p_frame;
 	}
 
 	int obtain_swr_ctx_result = swr_alloc_set_opts2(
 			&swr_context,
-			&audio_codec_context->ch_layout, AVSampleFormat::AV_SAMPLE_FMT_FLT, audio_codec_context->sample_rate,
+			&audio_codec_context->ch_layout, p_target_audio_format, audio_codec_context->sample_rate,
 			&audio_codec_context->ch_layout, audio_codec_context->sample_fmt, audio_codec_context->sample_rate,
 			0, nullptr);
 
@@ -651,6 +653,14 @@ AVFrame *VideoDecoder::_ensure_frame_audio_format(AVFrame *p_frame, AVSampleForm
 }
 
 void VideoDecoder::seek(double p_time) {
+	decoded_frames_mutex.lock();
+	decoded_frames.clear();
+	decoded_frames_mutex.unlock();
+	audio_buffer_mutex.lock();
+	decoded_audio_frames.clear();
+	audio_buffer_mutex.unlock();
+	last_decoded_frame_time.set(p_time);
+
 	decoder_commands.push(this, &VideoDecoder::_seek_command, p_time);
 }
 
@@ -769,13 +779,11 @@ Vector<Ref<DecodedFrame>> VideoDecoder::get_decoded_frames() {
 	return frames;
 }
 
-PackedFloat32Array VideoDecoder::get_decoded_audio_frames() {
+Vector<Ref<DecodedAudioFrame>> VideoDecoder::get_decoded_audio_frames() {
 	MutexLock lock(audio_buffer_mutex);
-	PackedFloat32Array buff;
-	buff.resize(audio_buffer_count);
-	memcpy(buff.ptrw(), audio_buffer, audio_buffer_count * sizeof(float));
-	audio_buffer_count = 0;
-	return buff;
+	Vector<Ref<DecodedAudioFrame>> frames = decoded_audio_frames.duplicate();
+	decoded_audio_frames.clear();
+	return frames;
 }
 
 VideoDecoder::DecoderState VideoDecoder::get_decoder_state() const {
@@ -860,3 +868,11 @@ void DecodedFrame::set_texture(const Ref<ImageTexture> &p_texture) { texture = p
 double DecodedFrame::get_time() const { return time; }
 
 void DecodedFrame::set_time(double p_time) { time = p_time; }
+
+double DecodedAudioFrame::get_time() const {
+	return time;
+}
+
+PackedFloat32Array DecodedAudioFrame::get_sample_data() const {
+	return sample_data;
+}

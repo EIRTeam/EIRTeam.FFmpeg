@@ -64,6 +64,26 @@ def download_ffmpeg(target, source, env):
 
 def _ffmpeg_emitter(target, source, env):
     target += get_ffmpeg_install_sources(env, os.path.dirname(target[0].get_path()))
+    if env["platform"] == "windows":
+        pass
+    else:
+        target += [
+            os.path.join(os.path.dirname(target[0].get_path()), f"lib/{lib}.lib")
+            for lib, version in ffmpeg_versions.items()
+        ]
+
+    emitter_headers = [
+        "libavcodec/codec.h",
+        "libavcodec/avcodec.h",
+        "libavutil/frame.h",
+        "libavformat/avformat.h",
+        "libavformat/avio.h",
+        "libswresample/swresample.h",
+        "libswscale/swscale.h",
+    ]
+
+    target += [os.path.join(os.path.dirname(target[0].get_path()), "include/" + x) for x in emitter_headers]
+
     return target, source
 
 
