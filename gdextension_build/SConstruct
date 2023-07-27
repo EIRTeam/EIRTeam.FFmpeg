@@ -20,7 +20,13 @@ env = SConscript("./godot-cpp/SConstruct")
 env.__class__.disable_warnings = methods.disable_warnings
 env.__class__.Run = methods.Run
 
-addon_dir = "build/addons/ffmpeg/"
+addon_base_dir = "build/addons/ffmpeg/"
+addon_platform_dir = addon_base_dir
+
+if env["platform"] == "windows":
+    addon_platform_dir += "win64/"
+else:
+    addon_platform_dir += "linux64/"
 
 opts = Variables([], ARGUMENTS)
 opts.Add(BoolVariable("verbose", "Enable verbose output for the compilation", False))
@@ -54,26 +60,28 @@ if env["platform"] == "windows" and sys.platform == "win32" and not env.get("is_
     )
 if env["platform"] == "macos":
     methods.write_macos_plist(
-        f'{addon_dir}libgdffmpeg.macos.{env["target"]}.framework',
+        f'{addon_platform_dir}libgdffmpeg.macos.{env["target"]}.framework',
         f'libgdffmpeg_advanced.macos.{env["target"]}',
         "org.godotengine.ffmpeg",
         "FFmpeg for Godot",
     )
     library = env.SharedLibrary(
-        f'{addon_dir}bin/libgdffmpeg.macos.{env["target"]}.framework/libgdffmpeg_advanced.macos.{env["target"]}',
+        f'{addon_platform_dir}bin/libgdffmpeg.macos.{env["target"]}.framework/libgdffmpeg_advanced.macos.{env["target"]}',
         source=sources,
     )
 else:
     library = env.SharedLibrary(
-        f'{addon_dir}libgdffmpeg{env["suffix"]}{env["SHLIBSUFFIX"]}',
+        f'{addon_platform_dir}libgdffmpeg{env["suffix"]}{env["SHLIBSUFFIX"]}',
         source=sources,
     )
 
 FFMPEG_DUMMY = "../thirdparty/ffmpeg/LICENSE.txt"
 ffmpeg_download_action = ffmpeg_download.ffmpeg_download_builder(env, FFMPEG_DUMMY, "ffmpeg_download.py")
-ffmpeg_install_action = ffmpeg_download.ffmpeg_install(env, f"#{addon_dir}", "../thirdparty/ffmpeg")
-env.Depends(sources, env.Install(addon_dir, "ffmpeg.gdextension"))
+ffmpeg_install_action = ffmpeg_download.ffmpeg_install(env, f"#{addon_platform_dir}", "../thirdparty/ffmpeg")
+env.Depends(sources, env.Install(addon_base_dir, "ffmpeg.gdextension"))
+license_install_action = env.InstallAs(f"{addon_base_dir}LICENSE-ffmpeg.txt", FFMPEG_DUMMY)
 env.Depends(sources, ffmpeg_install_action)
+env.Depends(sources, license_install_action)
 
 Default(library)
 

@@ -34,6 +34,7 @@
 #ifdef GDEXTENSION
 
 // Headers for building as GDExtension plug-in.
+#include <godot_cpp/classes/resource.hpp>
 #include <godot_cpp/classes/resource_format_loader.hpp>
 
 using namespace godot;
@@ -54,9 +55,11 @@ private:
 	void _update_recognized_extension_cache() const;
 	String get_resource_type_internal(const String &p_path) const;
 	PackedStringArray get_recognized_extensions_internal() const;
-	Ref<Resource> load_internal(const String &p_path, const String &p_original_path = "", Error *r_error = nullptr, bool p_use_sub_threads = false, float *r_progress = nullptr, CacheMode p_cache_mode = CACHE_MODE_REUSE);
+	Ref<Resource> load_internal(const String &p_path, const String &p_original_path = "", Error *r_error = nullptr, bool p_use_sub_threads = false, float *r_progress = nullptr, CacheMode p_cache_mode = CACHE_MODE_REUSE) const;
 	bool handles_type_internal(const String &p_type) const;
 
+protected:
+	static void _bind_methods() {} // Required for gdextension, do not remove;
 public:
 	STREAM_FUNC_REDIRECT_1_CONST(String, get_resource_type, const String &, p_path);
 #ifdef GDEXTENSION

@@ -26,12 +26,12 @@ jobs:
     with:
       target: template_release
   linux-build-debug:
-    name: 🏁 Linux Debug
+    name: 🐧 Linux Debug
     uses: ./.github/workflows/linux_builds.yml
     with:
       target: template_debug
   linux-build-release:
-    name: 🏁 Linux Release
+    name: 🐧 Linux Release
     uses: ./.github/workflows/linux_builds.yml
     with:
       target: template_release

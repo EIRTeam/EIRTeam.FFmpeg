@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  et_video_stream.cpp                                                   */
+/*  ffmpeg_video_stream.cpp                                               */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             EIRTeam.FFmpeg                             */
@@ -88,7 +88,6 @@ void FFmpegVideoStreamPlayback::update_internal(double p_delta) {
 		}
 	} else if (decoder->get_decoder_state() == VideoDecoder::DecoderState::END_OF_STREAM) {
 		playing = false;
-		print_line("ABORTING PLAYBACK");
 		return;
 	}
 

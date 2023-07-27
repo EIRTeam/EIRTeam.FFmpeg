@@ -32,6 +32,7 @@
 
 #ifdef GDEXTENSION
 #include "gdextension_build/gdex_print.h"
+#include <godot_cpp/classes/resource_loader.hpp>
 #else
 #include "core/string/print_string.h"
 #endif
@@ -43,8 +44,6 @@ Ref<VideoStreamFFMpegLoader> ffmpeg_loader;
 
 static void print_codecs() {
 	const AVCodecDescriptor *desc = NULL;
-	unsigned nb_codecs = 0, i = 0;
-
 	char msg[512] = { 0 };
 	print_line("Supported video codecs:");
 	while ((desc = avcodec_descriptor_next(desc))) {
@@ -76,16 +75,25 @@ void initialize_ffmpeg_module(ModuleInitializationLevel p_level) {
 	}
 	print_codecs();
 	GDREGISTER_ABSTRACT_CLASS(FFmpegVideoStreamPlayback);
+	GDREGISTER_ABSTRACT_CLASS(VideoStreamFFMpegLoader);
 	GDREGISTER_CLASS(FFmpegVideoStream);
 	ffmpeg_loader.instantiate();
+#ifdef GDEXTENSION
+	ResourceLoader::get_singleton()->add_resource_format_loader(ffmpeg_loader);
+#else
 	ResourceLoader::add_resource_format_loader(ffmpeg_loader);
+#endif
 }
 
 void uninitialize_ffmpeg_module(ModuleInitializationLevel p_level) {
 	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
 		return;
 	}
+#ifdef GDEXTENSION
+	ResourceLoader::get_singleton()->remove_resource_format_loader(ffmpeg_loader);
+#else
 	ResourceLoader::remove_resource_format_loader(ffmpeg_loader);
+#endif
 	ffmpeg_loader.unref();
 }
 

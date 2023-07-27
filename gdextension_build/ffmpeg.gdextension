@@ -4,25 +4,25 @@ entry_symbol = "ffmpeg_init"
 compatibility_minimum = 4.1
 
 [libraries]
-windows.debug.x86_64 = "res://addons/ffmpeg/libgdffmpeg.windows.template_debug.x86_64.dll"
-windows.release.x86_64 = "res://addons/ffmpeg/libgdffmpeg.windows.template_release.x86_64.dll"
-linux.debug.x86_64 = "res://addons/ffmpeg/libgdffmpeg.linux.template_debug.x86_64.so"
-linux.release.x86_64 = "res://addons/ffmpeg/libgdffmpeg.linux.template_release.x86_64.so"
+windows.debug.x86_64 = "res://addons/ffmpeg/win64/libgdffmpeg.windows.template_debug.x86_64.dll"
+windows.release.x86_64 = "res://addons/ffmpeg/win64/libgdffmpeg.windows.template_release.x86_64.dll"
+linux.debug.x86_64 = "res://addons/ffmpeg/linux64/libgdffmpeg.linux.template_debug.x86_64.so"
+linux.release.x86_64 = "res://addons/ffmpeg/win64/libgdffmpeg.linux.template_release.x86_64.so"
 
 [dependencies]
 
 windows.x86_64 = 
-    {"res://addons/ffmpeg/avcodec-60.dll": "",
-    "res://addons/ffmpeg/avfilter-9.dll": "",
-    "res://addons/ffmpeg/avformat-60.dll": "",
-    "res://addons/ffmpeg/avutil-58.dll": "",
-    "res://addons/ffmpeg/swresample-4.dll": "",
-    "res://addons/ffmpeg/swscale-7.dll": ""}
+    {"res://addons/ffmpeg/win64/avcodec-60.dll": "",
+    "res://addons/ffmpeg/win64/avfilter-9.dll": "",
+    "res://addons/ffmpeg/win64/avformat-60.dll": "",
+    "res://addons/ffmpeg/win64/avutil-58.dll": "",
+    "res://addons/ffmpeg/win64/swresample-4.dll": "",
+    "res://addons/ffmpeg/win64/swscale-7.dll": ""}
 
 linux.x86_64 = 
-    {"res://addons/ffmpeg/libavcodec.so.60": "",
-    "res://addons/ffmpeg/libavfilter.so.9": "",
-    "res://addons/ffmpeg/libavformat.so.60": "",
-    "res://addons/ffmpeg/libavutil.so.58": "",
-    "res://addons/ffmpeg/libswresample.so.4": "",
-    "res://addons/ffmpeg/libswscale.so.7": ""}
+    {"res://addons/ffmpeg/linux64/libavcodec.so.60": "",
+    "res://addons/ffmpeg/linux64/libavfilter.so.9": "",
+    "res://addons/ffmpeg/linux64/libavformat.so.60": "",
+    "res://addons/ffmpeg/linux64/libavutil.so.58": "",
+    "res://addons/ffmpeg/linux64/libswresample.so.4": "",
+    "res://addons/ffmpeg/linux64/libswscale.so.7": ""}

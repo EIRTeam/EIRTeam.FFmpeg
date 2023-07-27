@@ -45,7 +45,7 @@ void VideoStreamFFMpegLoader::_update_recognized_extension_cache() const {
 		if (current_fmt->extensions == nullptr) {
 			continue;
 		}
-		Vector<String> demuxer_exts = String(current_fmt->extensions).split(",", false);
+		PackedStringArray demuxer_exts = String(current_fmt->extensions).split(",", false);
 		const_cast<VideoStreamFFMpegLoader *>(this)->recognized_extension_cache.append_array(demuxer_exts);
 	}
 }
@@ -58,27 +58,7 @@ String VideoStreamFFMpegLoader::get_resource_type_internal(const String &p_path)
 	return "";
 }
 
-#ifdef GDEXTENSION
-PackedStringArray VideoStreamFFMpegLoader::_get_recognized_extensions() const {
-	_update_recognized_extension_cache();
-	return recognized_extension_cache;
-}
-
-Variant _load(const String &p_path, const String &p_original_path, bool p_use_sub_threads, int32_t p_cache_mode) {
-	return load_internal(p_path, p_original_path, nullptr, p_use_sub_threads, nullptr, p_cache_mode);
-}
-
-#else
-void VideoStreamFFMpegLoader::get_recognized_extensions(List<String> *p_extensions) const {
-	_update_recognized_extension_cache();
-	for (String ext : recognized_extension_cache) {
-		p_extensions->push_back(ext);
-	}
-}
-Ref<Resource> VideoStreamFFMpegLoader::load(const String &p_path, const String &p_original_path, Error *r_error, bool p_use_sub_threads, float *r_progress, CacheMode p_cache_mode) {
-	return load_internal(p_path, p_original_path, r_error, p_use_sub_threads, r_progress, p_cache_mode);
-}
-Ref<Resource> VideoStreamFFMpegLoader::load_internal(const String &p_path, const String &p_original_path, Error *r_error, bool p_use_sub_threads, float *r_progress, CacheMode p_cache_mode) {
+Ref<Resource> VideoStreamFFMpegLoader::load_internal(const String &p_path, const String &p_original_path, Error *r_error, bool p_use_sub_threads, float *r_progress, CacheMode p_cache_mode) const {
 	Ref<FileAccess> f = FileAccess::open(p_path, FileAccess::READ);
 	if (f.is_null()) {
 		if (r_error) {
@@ -98,6 +78,31 @@ Ref<Resource> VideoStreamFFMpegLoader::load_internal(const String &p_path, const
 	return stream;
 }
 bool VideoStreamFFMpegLoader::handles_type_internal(const String &p_type) const {
-	return ClassDB::is_parent_class(p_type, "VideoStream");
+#ifdef GDEXTENSION
+	return p_type == "VideoStream";
+#else
+	return ClassDB::is_parent_class(p_type, "VideoStreamFFMpegLoader");
+#endif
+}
+
+#ifdef GDEXTENSION
+PackedStringArray VideoStreamFFMpegLoader::_get_recognized_extensions() const {
+	_update_recognized_extension_cache();
+	return recognized_extension_cache;
+}
+
+Variant VideoStreamFFMpegLoader::_load(const String &p_path, const String &p_original_path, bool p_use_sub_threads, int32_t p_cache_mode) const {
+	return load_internal(p_path, p_original_path, nullptr, p_use_sub_threads, nullptr, (CacheMode)p_cache_mode);
+}
+
+#else
+void VideoStreamFFMpegLoader::get_recognized_extensions(List<String> *p_extensions) const {
+	_update_recognized_extension_cache();
+	for (String ext : recognized_extension_cache) {
+		p_extensions->push_back(ext);
+	}
+}
+Ref<Resource> VideoStreamFFMpegLoader::load(const String &p_path, const String &p_original_path, Error *r_error, bool p_use_sub_threads, float *r_progress, CacheMode p_cache_mode) {
+	return load_internal(p_path, p_original_path, r_error, p_use_sub_threads, r_progress, p_cache_mode);
 }
 #endif
