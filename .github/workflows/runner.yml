@@ -59,7 +59,7 @@ jobs:
         run: |
           mkdir artifacts
           cd ./artifacts_windows
-          zip -9 -r eirteam-ffmpeg-${{ steps.vars.outputs.sha_short }}-windows.zip *
+          zip -9 -r eirteam-ffmpeg-${{ steps.vars.outputs.sha_short }}.zip *
           mv *.zip ../artifacts/
           cd ..
           set -xe
