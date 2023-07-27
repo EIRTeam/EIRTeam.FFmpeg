@@ -2,7 +2,7 @@
 /*  et_video_stream.cpp                                                   */
 /**************************************************************************/
 /*                         This file is part of:                          */
-/*                           EIRTeam.Steamworks                           */
+/*                             EIRTeam.FFmpeg                             */
 /*                         https://ph.eirteam.moe                         */
 /**************************************************************************/
 /* Copyright (c) 2023-present Álex Román (EIRTeam) & contributors.        */
@@ -74,9 +74,11 @@ const char *const upd_str = "update_internal";
 
 void ETVideoStreamPlayback::update_internal(double p_delta) {
 	ZoneScopedN("update_internal");
+
 	if (paused || !playing) {
 		return;
 	}
+
 	playback_position += p_delta * 1000.0f;
 
 	if (decoder->get_decoder_state() == VideoDecoder::DecoderState::END_OF_STREAM && available_frames.size() == 0) {
@@ -84,6 +86,10 @@ void ETVideoStreamPlayback::update_internal(double p_delta) {
 		if (playback_position < decoder->get_last_decoded_frame_time()) {
 			seek_into_sync();
 		}
+	} else if (decoder->get_decoder_state() == VideoDecoder::DecoderState::END_OF_STREAM) {
+		playing = false;
+		print_line("ABORTING PLAYBACK");
+		return;
 	}
 
 	Ref<DecodedFrame> peek_frame = available_frames.size() > 0 ? available_frames[0] : nullptr;
@@ -141,6 +147,26 @@ void ETVideoStreamPlayback::update_internal(double p_delta) {
 		}
 	}
 
+	Ref<DecodedAudioFrame> peek_audio_frame;
+	if (available_audio_frames.size() > 0) {
+		peek_audio_frame = available_audio_frames[0];
+	}
+
+	bool audio_out_of_sync = false;
+
+	if (peek_audio_frame.is_valid()) {
+		audio_out_of_sync = Math::abs(playback_position - peek_audio_frame->get_time()) > LENIENCE_BEFORE_SEEK;
+
+		if (looping) {
+			out_of_sync &= Math::abs(playback_position - decoder->get_duration() - peek_audio_frame->get_time()) > LENIENCE_BEFORE_SEEK &&
+					Math::abs(playback_position + decoder->get_duration() - peek_audio_frame->get_time()) > LENIENCE_BEFORE_SEEK;
+		}
+	}
+
+	if (audio_out_of_sync) {
+		// TODO: seek audio stream individually if it desyncs
+	}
+
 	while (available_audio_frames.size() > 0 && check_next_audio_frame_valid(available_audio_frames[0])) {
 		ZoneScopedN("Audio mix");
 		Ref<DecodedAudioFrame> audio_frame = available_audio_frames[0];
@@ -193,7 +219,9 @@ void ETVideoStreamPlayback::set_paused_internal(bool p_paused) {
 
 void ETVideoStreamPlayback::play_internal() {
 	if (!playing) {
+		clear();
 		playback_position = 0;
+		decoder->seek(0, true);
 	} else {
 		stop_internal();
 	}
@@ -203,7 +231,8 @@ void ETVideoStreamPlayback::play_internal() {
 void ETVideoStreamPlayback::stop_internal() {
 	if (playing) {
 		clear();
-		seek_internal(0);
+		playback_position = 0.0f;
+		decoder->seek(playback_position, true);
 	}
 	playing = false;
 }

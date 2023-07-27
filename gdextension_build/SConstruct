@@ -72,7 +72,6 @@ else:
 FFMPEG_DUMMY = "../thirdparty/ffmpeg/LICENSE.txt"
 ffmpeg_download_action = ffmpeg_download.ffmpeg_download_builder(env, FFMPEG_DUMMY, "ffmpeg_download.py")
 ffmpeg_install_action = ffmpeg_download.ffmpeg_install(env, f"#{addon_dir}", "../thirdparty/ffmpeg")
-env.Depends(ffmpeg_install_action, ffmpeg_download_action)
 env.Depends(sources, env.Install(addon_dir, "ffmpeg.gdextension"))
 env.Depends(sources, ffmpeg_install_action)
 

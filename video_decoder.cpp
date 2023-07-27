@@ -2,7 +2,7 @@
 /*  video_decoder.cpp                                                     */
 /**************************************************************************/
 /*                         This file is part of:                          */
-/*                           EIRTeam.Steamworks                           */
+/*                             EIRTeam.FFmpeg                             */
 /*                         https://ph.eirteam.moe                         */
 /**************************************************************************/
 /* Copyright (c) 2023-present Álex Román (EIRTeam) & contributors.        */
@@ -242,6 +242,7 @@ void VideoDecoder::_seek_command(double p_target_timestamp) {
 	}
 	skip_output_until_time = p_target_timestamp;
 	decoder_state = DecoderState::READY;
+	print_line("COMMAND IS IN");
 }
 
 const char *const decoder_loop = "Video decoding";
@@ -652,7 +653,7 @@ AVFrame *VideoDecoder::_ensure_frame_audio_format(AVFrame *p_frame, AVSampleForm
 	return out_frame;
 }
 
-void VideoDecoder::seek(double p_time) {
+void VideoDecoder::seek(double p_time, bool p_wait) {
 	decoded_frames_mutex.lock();
 	decoded_frames.clear();
 	decoded_frames_mutex.unlock();
@@ -661,7 +662,11 @@ void VideoDecoder::seek(double p_time) {
 	audio_buffer_mutex.unlock();
 	last_decoded_frame_time.set(p_time);
 
-	decoder_commands.push(this, &VideoDecoder::_seek_command, p_time);
+	if (p_wait) {
+		decoder_commands.push_and_sync(this, &VideoDecoder::_seek_command, p_time);
+	} else {
+		decoder_commands.push(this, &VideoDecoder::_seek_command, p_time);
+	}
 }
 
 void VideoDecoder::start_decoding() {

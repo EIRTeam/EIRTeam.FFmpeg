@@ -65,10 +65,13 @@ def download_ffmpeg(target, source, env):
 def _ffmpeg_emitter(target, source, env):
     target += get_ffmpeg_install_sources(env, os.path.dirname(target[0].get_path()))
     if env["platform"] == "windows":
-        pass
-    else:
         target += [
             os.path.join(os.path.dirname(target[0].get_path()), f"lib/{lib}.lib")
+            for lib, version in ffmpeg_versions.items()
+        ]
+    else:
+        target += [
+            os.path.join(os.path.dirname(target[0].get_path()), f"lib/lib{lib}.so")
             for lib, version in ffmpeg_versions.items()
         ]
 

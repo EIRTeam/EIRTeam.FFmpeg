@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  ffmpeg_frame.h                                                        */
+/*  func_redirect.h                                                       */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             EIRTeam.FFmpeg                             */
@@ -28,43 +28,25 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef FFMPEG_FRAME_H
-#define FFMPEG_FRAME_H
+#ifndef FUNC_REDIRECT_H
+#define FUNC_REDIRECT_H
 
 #ifdef GDEXTENSION
-
-// Headers for building as GDExtension plug-in.
-#include <godot_cpp/classes/ref_counted.hpp>
-#include <godot_cpp/classes/weak_ref.hpp>
-#include <godot_cpp/godot.hpp>
-
-using namespace godot;
-
+#define STREAM_FUNCNAME(funcname) _##funcname
 #else
-
-#include "core/object/ref_counted.h"
-
+#define STREAM_FUNCNAME(funcname) funcname
 #endif
-extern "C" {
-#include "libavutil/frame.h"
-}
 
-class FFmpegFrame : public RefCounted {
-public:
-	typedef void (*return_frame_callback_t)(Ref<RefCounted> p_instance, Ref<FFmpegFrame> p_frame);
+#define STREAM_FUNC_REDIRECT_0_(retval, funcname, const) \
+	virtual retval STREAM_FUNCNAME(funcname)() const override { return funcname##_internal(); };
 
-private:
-	AVFrame *frame = nullptr;
-	return_frame_callback_t return_func = nullptr;
-	Ref<WeakRef> return_instance;
+#define STREAM_FUNC_REDIRECT_1_(retval, funcname, const, arg0type, arg0name) \
+	virtual retval STREAM_FUNCNAME(funcname)(arg0type arg0name) const override { return funcname##_internal(arg0name); };
 
-public:
-	AVFrame *get_frame() const;
-	double get_time() const;
-	void do_return();
-	FFmpegFrame(Ref<RefCounted> p_return_func_instance, return_frame_callback_t p_return_func);
-	FFmpegFrame();
-	~FFmpegFrame();
-};
+#define STREAM_FUNC_REDIRECT_0(retval, funcname) STREAM_FUNC_REDIRECT_0_(retval, funcname, );
+#define STREAM_FUNC_REDIRECT_0_CONST(retval, funcname) STREAM_FUNC_REDIRECT_0_(retval, funcname, const);
 
-#endif // FFMPEG_FRAME_H
+#define STREAM_FUNC_REDIRECT_1(retval, funcname, arg0type, arg0name) STREAM_FUNC_REDIRECT_1_(retval, funcname, , arg0type, arg0name);
+#define STREAM_FUNC_REDIRECT_1_CONST(retval, funcname, arg0type, arg0name) STREAM_FUNC_REDIRECT_1_(retval, funcname, const, arg0type, arg0name);
+
+#endif // FUNC_REDIRECT_H

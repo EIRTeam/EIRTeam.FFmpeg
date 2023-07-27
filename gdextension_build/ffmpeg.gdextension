@@ -6,6 +6,8 @@ compatibility_minimum = 4.1
 [libraries]
 windows.debug.x86_64 = "res://addons/ffmpeg/libgdffmpeg.windows.template_debug.x86_64.dll"
 windows.release.x86_64 = "res://addons/ffmpeg/libgdffmpeg.windows.template_release.x86_64.dll"
+linux.debug.x86_64 = "res://addons/ffmpeg/libgdffmpeg.linux.template_debug.x86_64.so"
+linux.release.x86_64 = "res://addons/ffmpeg/libgdffmpeg.linux.template_release.x86_64.so"
 
 [dependencies]
 
@@ -16,3 +18,11 @@ windows.x86_64 =
     "res://addons/ffmpeg/avutil-58.dll": "",
     "res://addons/ffmpeg/swresample-4.dll": "",
     "res://addons/ffmpeg/swscale-7.dll": ""}
+
+linux.x86_64 = 
+    {"res://addons/ffmpeg/libavcodec.so.60": "",
+    "res://addons/ffmpeg/libavfilter.so.9": "",
+    "res://addons/ffmpeg/libavformat.so.60": "",
+    "res://addons/ffmpeg/libavutil.so.58": "",
+    "res://addons/ffmpeg/libswresample.so.4": "",
+    "res://addons/ffmpeg/libswscale.so.7": ""}

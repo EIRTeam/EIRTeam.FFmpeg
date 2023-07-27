@@ -2,7 +2,7 @@
 /*  et_video_stream.h                                                     */
 /**************************************************************************/
 /*                         This file is part of:                          */
-/*                           EIRTeam.Steamworks                           */
+/*                             EIRTeam.FFmpeg                             */
 /*                         https://ph.eirteam.moe                         */
 /**************************************************************************/
 /* Copyright (c) 2023-present Álex Román (EIRTeam) & contributors.        */
@@ -54,24 +54,7 @@ using namespace godot;
 // We have to use this function redirection system for GDExtension because the naming conventions
 // for the functions we are supposed to override are different there
 
-#ifdef GDEXTENSION
-#define STREAM_FUNCNAME(funcname) _##funcname
-#else
-#define STREAM_FUNCNAME(funcname) funcname
-#endif
-
-#define STREAM_FUNC_REDIRECT_0_(retval, funcname, const) \
-	virtual retval STREAM_FUNCNAME(funcname)() const override { return funcname##_internal(); };
-
-#define STREAM_FUNC_REDIRECT_1_(retval, funcname, const, arg0type, arg0name) \
-	virtual retval STREAM_FUNCNAME(funcname)(arg0type arg0name) const override { return funcname##_internal(arg0name); };
-
-#define STREAM_FUNC_REDIRECT_0(retval, funcname) STREAM_FUNC_REDIRECT_0_(retval, funcname, );
-#define STREAM_FUNC_REDIRECT_0_CONST(retval, funcname) STREAM_FUNC_REDIRECT_0_(retval, funcname, const);
-
-#define STREAM_FUNC_REDIRECT_1(retval, funcname, arg0type, arg0name) STREAM_FUNC_REDIRECT_1_(retval, funcname, , arg0type, arg0name);
-#define STREAM_FUNC_REDIRECT_1_CONST(retval, funcname, arg0type, arg0name) STREAM_FUNC_REDIRECT_1_(retval, funcname, const, arg0type, arg0name);
-
+#include "gdextension_build/func_redirect.h"
 class ETVideoStreamPlayback : public VideoStreamPlayback {
 	GDCLASS(ETVideoStreamPlayback, VideoStreamPlayback);
 	const int LENIENCE_BEFORE_SEEK = 2500;

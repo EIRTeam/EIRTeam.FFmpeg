@@ -2,7 +2,7 @@
 /*  ffmpeg_frame.cpp                                                      */
 /**************************************************************************/
 /*                         This file is part of:                          */
-/*                           EIRTeam.Steamworks                           */
+/*                             EIRTeam.FFmpeg                             */
 /*                         https://ph.eirteam.moe                         */
 /**************************************************************************/
 /* Copyright (c) 2023-present Álex Román (EIRTeam) & contributors.        */

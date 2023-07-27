@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  ffmpeg_frame.h                                                        */
+/*  video_stream_ffmpeg_loader.h                                          */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             EIRTeam.FFmpeg                             */
@@ -28,43 +28,45 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef FFMPEG_FRAME_H
-#define FFMPEG_FRAME_H
+#ifndef VIDEO_STREAM_FFMPEG_LOADER_H
+#define VIDEO_STREAM_FFMPEG_LOADER_H
 
 #ifdef GDEXTENSION
 
 // Headers for building as GDExtension plug-in.
-#include <godot_cpp/classes/ref_counted.hpp>
-#include <godot_cpp/classes/weak_ref.hpp>
-#include <godot_cpp/godot.hpp>
+#include <godot_cpp/classes/resource_format_loader.hpp>
 
 using namespace godot;
 
 #else
 
-#include "core/object/ref_counted.h"
+#include "core/io/resource_loader.h"
 
 #endif
-extern "C" {
-#include "libavutil/frame.h"
-}
 
-class FFmpegFrame : public RefCounted {
-public:
-	typedef void (*return_frame_callback_t)(Ref<RefCounted> p_instance, Ref<FFmpegFrame> p_frame);
+#include "gdextension_build/func_redirect.h"
+
+class VideoStreamFFMpegLoader : public ResourceFormatLoader {
+	GDCLASS(VideoStreamFFMpegLoader, ResourceFormatLoader);
+	PackedStringArray recognized_extension_cache;
 
 private:
-	AVFrame *frame = nullptr;
-	return_frame_callback_t return_func = nullptr;
-	Ref<WeakRef> return_instance;
+	void _update_recognized_extension_cache() const;
+	String get_resource_type_internal(const String &p_path) const;
+	PackedStringArray get_recognized_extensions_internal() const;
+	Ref<Resource> load_internal(const String &p_path, const String &p_original_path = "", Error *r_error = nullptr, bool p_use_sub_threads = false, float *r_progress = nullptr, CacheMode p_cache_mode = CACHE_MODE_REUSE);
+	bool handles_type_internal(const String &p_type) const;
 
 public:
-	AVFrame *get_frame() const;
-	double get_time() const;
-	void do_return();
-	FFmpegFrame(Ref<RefCounted> p_return_func_instance, return_frame_callback_t p_return_func);
-	FFmpegFrame();
-	~FFmpegFrame();
+	STREAM_FUNC_REDIRECT_1_CONST(String, get_resource_type, const String &, p_path);
+#ifdef GDEXTENSION
+	virtual PackedStringArray _get_recognized_extensions() const override;
+	virtual Variant _load(const String &p_path, const String &p_original_path, bool p_use_sub_threads, int32_t p_cache_mode) const override;
+#else
+	virtual void get_recognized_extensions(List<String> *p_extensions) const override;
+	virtual Ref<Resource> load(const String &p_path, const String &p_original_path = "", Error *r_error = nullptr, bool p_use_sub_threads = false, float *r_progress = nullptr, CacheMode p_cache_mode = CACHE_MODE_REUSE) override;
+	STREAM_FUNC_REDIRECT_1_CONST(bool, handles_type, const String &, p_type);
+#endif
 };
 
-#endif // FFMPEG_FRAME_H
+#endif // VIDEO_STREAM_FFMPEG_LOADER_H

@@ -2,7 +2,7 @@
 /*  video_decoder.h                                                       */
 /**************************************************************************/
 /*                         This file is part of:                          */
-/*                           EIRTeam.Steamworks                           */
+/*                             EIRTeam.FFmpeg                             */
 /*                         https://ph.eirteam.moe                         */
 /**************************************************************************/
 /* Copyright (c) 2023-present Álex Román (EIRTeam) & contributors.        */
@@ -176,7 +176,7 @@ public:
 		Ref<FFmpegCodec> codec;
 		AVHWDeviceType device_type;
 	};
-	void seek(double p_time);
+	void seek(double p_time, bool p_wait = false);
 	void start_decoding();
 	Vector<AvailableDecoderInfo> get_available_decoders(const AVInputFormat *p_format, AVCodecID p_codec_id, BitField<HardwareVideoDecoder> p_target_decoders);
 	void return_frames(Vector<Ref<DecodedFrame>> p_frames);

@@ -2,7 +2,7 @@
 /*  register_types.cpp                                                    */
 /**************************************************************************/
 /*                         This file is part of:                          */
-/*                           EIRTeam.Steamworks                           */
+/*                             EIRTeam.FFmpeg                             */
 /*                         https://ph.eirteam.moe                         */
 /**************************************************************************/
 /* Copyright (c) 2023-present Álex Román (EIRTeam) & contributors.        */
@@ -37,6 +37,9 @@
 #endif
 
 #include "et_video_stream.h"
+#include "video_stream_ffmpeg_loader.h"
+
+Ref<VideoStreamFFMpegLoader> ffmpeg_loader;
 
 static void print_codecs() {
 	const AVCodecDescriptor *desc = NULL;
@@ -65,6 +68,25 @@ static void print_codecs() {
 			}
 		}
 	}
+
+	void *iteration_state = nullptr;
+	const AVInputFormat *current_fmt = nullptr;
+
+	while ((current_fmt = av_demuxer_iterate(&iteration_state)) != nullptr) {
+		print_line(current_fmt->name, current_fmt->long_name);
+		// FFprobe does this, not sure how illegal it is but we'll do it anyways...
+		if (current_fmt->codec_tag != nullptr) {
+			uint32_t *codec_id = (uint32_t *)(current_fmt->codec_tag[0]);
+			print_line("CODEC TAG:", *codec_id);
+		}
+
+		if (current_fmt->mime_type != nullptr) {
+			print_line("MIME:", current_fmt->mime_type);
+		}
+		if (current_fmt->extensions) {
+			print_line("EXTS:", current_fmt->extensions);
+		}
+	}
 }
 
 void initialize_ffmpeg_module(ModuleInitializationLevel p_level) {
@@ -74,9 +96,16 @@ void initialize_ffmpeg_module(ModuleInitializationLevel p_level) {
 	print_codecs();
 	GDREGISTER_ABSTRACT_CLASS(ETVideoStreamPlayback);
 	GDREGISTER_CLASS(ETVideoStream);
+	ffmpeg_loader.instantiate();
+	ResourceLoader::add_resource_format_loader(ffmpeg_loader);
 }
 
 void uninitialize_ffmpeg_module(ModuleInitializationLevel p_level) {
+	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
+		return;
+	}
+	ResourceLoader::remove_resource_format_loader(ffmpeg_loader);
+	ffmpeg_loader.unref();
 }
 
 #ifdef GDEXTENSION
