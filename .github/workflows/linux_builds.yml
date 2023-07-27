@@ -15,19 +15,18 @@ env:
 
 concurrency:
   cancel-in-progress: true
-  group: ci-${{github.actor}}-${{github.head_ref || github.run_number}}-${{github.ref}}-windows-${{ inputs.target }}
+  group: ci-${{github.actor}}-${{github.head_ref || github.run_number}}-${{github.ref}}-linux-${{ inputs.target }}
 
 jobs:
-  build-windows:
-    # Windows 10 with latest image
-    runs-on: "windows-latest"
+  build-linux:
+    runs-on: "ubuntu-20.04"
     name: ${{ matrix.name }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - name: Windows build - ${{ inputs.target }}
-            cache-name: windows
+          - name: Linux build - ${{ inputs.target }}
+            cache-name: Linux
             target: ${{ inputs.target }}
             # Skip debug symbols, they're way too big with MSVC.
             sconsflags: debug_symbols=no
@@ -39,19 +38,13 @@ jobs:
       - name: Setup python and scons
         uses: ./.github/actions/deps
 
-      - name: Setup MSVC problem matcher
-        uses: ammaraskar/msvc-problem-matcher@master
-
       - name: Compilation
         uses: ./.github/actions/build
         with:
           sconsflags: ${{ env.SCONSFLAGS }} ${{ matrix.sconsflags }}
-          platform: windows
+          platform: linux
           target: ${{ matrix.target }}
           tests: ${{ matrix.tests }}
-      - name: Prepare artifact
-        run: |
-          Remove-Item gdextension_build/build/addons/ffmpeg/* -Include *.exp,*.lib,*.pdb -Force
       - name: Upload artifact
         uses: ./.github/actions/upload-artifact
         with:
