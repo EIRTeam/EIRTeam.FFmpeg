@@ -36,13 +36,19 @@ AVFrame *FFmpegFrame::get_frame() const {
 
 void FFmpegFrame::do_return() {
 	if (return_func && return_instance.is_valid()) {
-		return_func(return_instance, this);
+		Ref<RefCounted> instance_ref = return_instance->get_ref();
+		if (!instance_ref.is_valid()) {
+			return;
+		}
+		return_func(instance_ref, this);
 	}
 }
 
 FFmpegFrame::FFmpegFrame(Ref<RefCounted> p_return_func_instance, return_frame_callback_t p_return_func) {
-	if (p_return_func) {
+	if (p_return_func && p_return_func_instance.is_valid()) {
 		return_func = p_return_func;
+		return_instance.instantiate();
+		return_instance->set_ref(p_return_func_instance);
 		return_instance = p_return_func_instance;
 	}
 	frame = av_frame_alloc();

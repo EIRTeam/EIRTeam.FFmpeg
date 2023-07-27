@@ -832,6 +832,7 @@ VideoDecoder::~VideoDecoder() {
 	if (thread != nullptr) {
 		thread_abort.set_to(true);
 		thread->join();
+		memdelete(thread);
 	}
 
 	if (format_context != nullptr && input_opened) {
@@ -848,6 +849,15 @@ VideoDecoder::~VideoDecoder() {
 
 	if (sws_context != nullptr) {
 		sws_freeContext(sws_context);
+	}
+
+	if (swr_context != nullptr) {
+		swr_free(&swr_context);
+	}
+
+	if (io_context != nullptr) {
+		av_free(io_context->buffer);
+		avio_context_free(&io_context);
 	}
 }
 

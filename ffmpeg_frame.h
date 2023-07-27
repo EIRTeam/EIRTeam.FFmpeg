@@ -55,7 +55,7 @@ public:
 private:
 	AVFrame *frame = nullptr;
 	return_frame_callback_t return_func = nullptr;
-	Ref<RefCounted> return_instance;
+	Ref<WeakRef> return_instance;
 
 public:
 	AVFrame *get_frame() const;
