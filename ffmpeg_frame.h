@@ -35,6 +35,7 @@
 
 // Headers for building as GDExtension plug-in.
 #include <godot_cpp/classes/ref_counted.hpp>
+#include <godot_cpp/classes/weak_ref.hpp>
 #include <godot_cpp/godot.hpp>
 
 using namespace godot;

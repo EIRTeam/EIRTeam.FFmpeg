@@ -30,6 +30,10 @@
 
 #include "ffmpeg_frame.h"
 
+#ifdef GDEXTENSION
+#include <godot_cpp/variant/utility_functions.hpp>
+#endif
+
 AVFrame *FFmpegFrame::get_frame() const {
 	return frame;
 }
@@ -47,9 +51,13 @@ void FFmpegFrame::do_return() {
 FFmpegFrame::FFmpegFrame(Ref<RefCounted> p_return_func_instance, return_frame_callback_t p_return_func) {
 	if (p_return_func && p_return_func_instance.is_valid()) {
 		return_func = p_return_func;
+#ifdef GDEXTENSION
+		return_instance = UtilityFunctions::weakref(p_return_func_instance);
+#else
 		return_instance.instantiate();
 		return_instance->set_ref(p_return_func_instance);
 		return_instance = p_return_func_instance;
+#endif
 	}
 	frame = av_frame_alloc();
 }

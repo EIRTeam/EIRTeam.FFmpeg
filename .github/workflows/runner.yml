@@ -32,6 +32,7 @@ jobs:
     name: Publish release
     needs: [windows-build-debug, windows-build-release]
     runs-on: ubuntu-latest
+    if: github.event.inputs.doRelease
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -39,10 +40,17 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: windows
-          path: artifacts
+          path: artifacts_windows
+      - name: Calculate short sha
+        id: vars
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
       - name: Create release
         id: create_release
         run: |
+          mkdir artifacts
+          cd ./artifacts_windows
+          zip -9 -r eirteam-ffmpeg-${{ steps.vars.outputs.sha_short }}-windows.zip *
+          mv *.zip ../artifacts/
           set -xe
           shopt -s nullglob
           RELDATE="$(date +'%Y-%m-%d %H:%M')"

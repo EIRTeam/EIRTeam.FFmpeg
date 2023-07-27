@@ -53,16 +53,8 @@ jobs:
           platform: windows
           target: ${{ matrix.target }}
           tests: ${{ matrix.tests }}
-      - name: Calculate short sha
-        id: vars
-        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-      - name: Pack build
-        shell: sh
-        run: |
-          cd ./gdextension_build/build
-          zip -9 -r eirteam-ffmpeg-${{ steps.vars.outputs.sha_short }}-${{ inputs.target }}.zip *
       - name: Upload artifact
         uses: ./.github/actions/upload-artifact
         with:
           name: windows
-          path: ./gdextension_build/build/*.zip
+          path: ./gdextension_build/build/*
