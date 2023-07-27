@@ -36,7 +36,7 @@
 #include "core/string/print_string.h"
 #endif
 
-#include "et_video_stream.h"
+#include "ffmpeg_video_stream.h"
 #include "video_stream_ffmpeg_loader.h"
 
 Ref<VideoStreamFFMpegLoader> ffmpeg_loader;
@@ -53,7 +53,7 @@ static void print_codecs() {
 		bool found = false;
 		while ((codec = av_codec_iterate(&i))) {
 			if (codec->id == desc->id && av_codec_is_decoder(codec)) {
-				if (!found && avcodec_find_decoder(desc->id) || avcodec_find_encoder(desc->id)) {
+				if (!found && (avcodec_find_decoder(desc->id) || avcodec_find_encoder(desc->id))) {
 					snprintf(msg, sizeof(msg) - 1, "\t%s%s%s",
 							avcodec_find_decoder(desc->id) ? "decode " : "",
 							avcodec_find_encoder(desc->id) ? "encode " : "",
@@ -68,25 +68,6 @@ static void print_codecs() {
 			}
 		}
 	}
-
-	void *iteration_state = nullptr;
-	const AVInputFormat *current_fmt = nullptr;
-
-	while ((current_fmt = av_demuxer_iterate(&iteration_state)) != nullptr) {
-		print_line(current_fmt->name, current_fmt->long_name);
-		// FFprobe does this, not sure how illegal it is but we'll do it anyways...
-		if (current_fmt->codec_tag != nullptr) {
-			uint32_t *codec_id = (uint32_t *)(current_fmt->codec_tag[0]);
-			print_line("CODEC TAG:", *codec_id);
-		}
-
-		if (current_fmt->mime_type != nullptr) {
-			print_line("MIME:", current_fmt->mime_type);
-		}
-		if (current_fmt->extensions) {
-			print_line("EXTS:", current_fmt->extensions);
-		}
-	}
 }
 
 void initialize_ffmpeg_module(ModuleInitializationLevel p_level) {
@@ -94,8 +75,8 @@ void initialize_ffmpeg_module(ModuleInitializationLevel p_level) {
 		return;
 	}
 	print_codecs();
-	GDREGISTER_ABSTRACT_CLASS(ETVideoStreamPlayback);
-	GDREGISTER_CLASS(ETVideoStream);
+	GDREGISTER_ABSTRACT_CLASS(FFmpegVideoStreamPlayback);
+	GDREGISTER_CLASS(FFmpegVideoStream);
 	ffmpeg_loader.instantiate();
 	ResourceLoader::add_resource_format_loader(ffmpeg_loader);
 }

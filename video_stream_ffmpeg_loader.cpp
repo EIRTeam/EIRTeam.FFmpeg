@@ -32,7 +32,7 @@
 extern "C" {
 #include "libavformat/avformat.h"
 }
-#include "et_video_stream.h"
+#include "ffmpeg_video_stream.h"
 
 void VideoStreamFFMpegLoader::_update_recognized_extension_cache() const {
 	if (recognized_extension_cache.size() > 0) {
@@ -87,7 +87,7 @@ Ref<Resource> VideoStreamFFMpegLoader::load_internal(const String &p_path, const
 		return Ref<Resource>();
 	}
 
-	Ref<ETVideoStream> stream;
+	Ref<FFmpegVideoStream> stream;
 	stream.instantiate();
 	stream->set_file(p_path);
 

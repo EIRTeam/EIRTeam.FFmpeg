@@ -242,10 +242,7 @@ void VideoDecoder::_seek_command(double p_target_timestamp) {
 	}
 	skip_output_until_time = p_target_timestamp;
 	decoder_state = DecoderState::READY;
-	print_line("COMMAND IS IN");
 }
-
-const char *const decoder_loop = "Video decoding";
 
 void VideoDecoder::_thread_func(void *userdata) {
 	VideoDecoder *decoder = (VideoDecoder *)userdata;
@@ -258,7 +255,6 @@ void VideoDecoder::_thread_func(void *userdata) {
 	String video_decoding_str = vformat("Video decoding %d", Thread::get_caller_id());
 #endif
 	CharString str = video_decoding_str.utf8();
-	const char *const video_decoding = str.ptr();
 	while (!decoder->thread_abort.is_set()) {
 		switch (decoder->decoder_state) {
 			case READY:

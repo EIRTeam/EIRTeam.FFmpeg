@@ -55,8 +55,8 @@ using namespace godot;
 // for the functions we are supposed to override are different there
 
 #include "gdextension_build/func_redirect.h"
-class ETVideoStreamPlayback : public VideoStreamPlayback {
-	GDCLASS(ETVideoStreamPlayback, VideoStreamPlayback);
+class FFmpegVideoStreamPlayback : public VideoStreamPlayback {
+	GDCLASS(FFmpegVideoStreamPlayback, VideoStreamPlayback);
 	const int LENIENCE_BEFORE_SEEK = 2500;
 	double playback_position = 0.0f;
 
@@ -112,11 +112,11 @@ public:
 	STREAM_FUNC_REDIRECT_0_CONST(double, get_playback_position);
 	STREAM_FUNC_REDIRECT_0_CONST(int, get_mix_rate);
 	STREAM_FUNC_REDIRECT_0_CONST(int, get_channels);
-	ETVideoStreamPlayback();
+	FFmpegVideoStreamPlayback();
 };
 
-class ETVideoStream : public VideoStream {
-	GDCLASS(ETVideoStream, VideoStream);
+class FFmpegVideoStream : public VideoStream {
+	GDCLASS(FFmpegVideoStream, VideoStream);
 
 protected:
 	static void _bind_methods(){}; // Required by GDExtension, do not remove
@@ -125,7 +125,7 @@ protected:
 		if (!fa.is_valid()) {
 			return Ref<VideoStreamPlayback>();
 		}
-		Ref<ETVideoStreamPlayback> pb;
+		Ref<FFmpegVideoStreamPlayback> pb;
 		pb.instantiate();
 		pb->load(fa);
 		return pb;
