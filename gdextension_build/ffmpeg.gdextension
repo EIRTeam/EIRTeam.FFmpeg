@@ -7,7 +7,7 @@ compatibility_minimum = 4.1
 windows.debug.x86_64 = "res://addons/ffmpeg/win64/libgdffmpeg.windows.template_debug.x86_64.dll"
 windows.release.x86_64 = "res://addons/ffmpeg/win64/libgdffmpeg.windows.template_release.x86_64.dll"
 linux.debug.x86_64 = "res://addons/ffmpeg/linux64/libgdffmpeg.linux.template_debug.x86_64.so"
-linux.release.x86_64 = "res://addons/ffmpeg/win64/libgdffmpeg.linux.template_release.x86_64.so"
+linux.release.x86_64 = "res://addons/ffmpeg/linux64/libgdffmpeg.linux.template_release.x86_64.so"
 
 [dependencies]
 
