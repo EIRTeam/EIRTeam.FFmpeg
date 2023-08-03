@@ -1,6 +1,8 @@
 ![](img/cover.jpg)
 # EIRTeam.FFmpeg
 
+Note: The version of FFmpeg shipped with EIRTeam.FFmpeg allows loading of videos using the patent-encumbered h264 codec, check with your local laws to see if software patents are recognized in your country.
+
 GDExtension Video Decoder library for [Godot Engine](https://godotengine.org) >4.1,
 using the [FFmpeg](https://ffmpeg.org) library.
 
