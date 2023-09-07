@@ -135,6 +135,7 @@ private:
 	double audio_time_base_in_seconds;
 	double duration;
 	double skip_output_until_time = -1.0;
+	SafeFlag skip_current_outputs;
 	SafeNumeric<float> last_decoded_frame_time;
 	Ref<FileAccess> video_file;
 	BitField<HardwareVideoDecoder> target_hw_video_decoders = HardwareVideoDecoder::ANY;

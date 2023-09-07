@@ -244,7 +244,7 @@ void FFmpegVideoStreamPlayback::seek_internal(double p_time) {
 }
 
 double FFmpegVideoStreamPlayback::get_length_internal() const {
-	return decoder->get_duration();
+	return decoder->get_duration() / 1000.0f;
 }
 
 Ref<Texture2D> FFmpegVideoStreamPlayback::get_texture_internal() const {

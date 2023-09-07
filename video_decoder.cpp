@@ -236,12 +236,14 @@ VideoDecoder::HardwareVideoDecoder VideoDecoder::from_av_hw_device_type(AVHWDevi
 void VideoDecoder::_seek_command(double p_target_timestamp) {
 	avcodec_flush_buffers(video_codec_context);
 	av_seek_frame(format_context, video_stream->index, (long)(p_target_timestamp / video_time_base_in_seconds / 1000.0), AVSEEK_FLAG_BACKWARD);
+	// No need to seek the audio stream separately since it is seeked automatically with the video stream
+	// due to being in the same file
 	if (has_audio) {
 		avcodec_flush_buffers(audio_codec_context);
-		av_seek_frame(format_context, audio_stream->index, (long)(p_target_timestamp / video_time_base_in_seconds / 1000.0), AVSEEK_FLAG_BACKWARD);
 	}
 	skip_output_until_time = p_target_timestamp;
 	decoder_state = DecoderState::READY;
+	skip_current_outputs.clear();
 }
 
 void VideoDecoder::_thread_func(void *userdata) {
@@ -400,7 +402,7 @@ void VideoDecoder::_read_decoded_frames(AVFrame *p_received_frame) {
 		int64_t frame_timestamp = p_received_frame->best_effort_timestamp != AV_NOPTS_VALUE ? p_received_frame->best_effort_timestamp : p_received_frame->pts;
 		double frame_time = (frame_timestamp - video_stream->start_time) * video_time_base_in_seconds * 1000.0;
 
-		if (skip_output_until_time > frame_time) {
+		if (skip_output_until_time > frame_time || skip_current_outputs.is_set()) {
 			continue;
 		}
 
@@ -483,7 +485,9 @@ void VideoDecoder::_read_decoded_frames(AVFrame *p_received_frame) {
 		decoded_frames_mutex.unlock();
 #else
 		decoded_frames_mutex.lock();
-		decoded_frames.push_back(memnew(DecodedFrame(frame_time, image)));
+		if (!skip_current_outputs.is_set()) {
+			decoded_frames.push_back(memnew(DecodedFrame(frame_time, image)));
+		}
 		decoded_frames_mutex.unlock();
 #endif
 	}
@@ -509,7 +513,7 @@ void VideoDecoder::_read_decoded_audio_frames(AVFrame *p_received_frame) {
 		int64_t frame_timestamp = p_received_frame->best_effort_timestamp != AV_NOPTS_VALUE ? p_received_frame->best_effort_timestamp : p_received_frame->pts;
 		double frame_time = (frame_timestamp - audio_stream->start_time) * audio_time_base_in_seconds * 1000.0;
 
-		if (skip_output_until_time > frame_time) {
+		if (skip_output_until_time > frame_time || skip_current_outputs.is_set()) {
 			continue;
 		}
 
@@ -527,7 +531,9 @@ void VideoDecoder::_read_decoded_audio_frames(AVFrame *p_received_frame) {
 		audio_frame->sample_data.resize(data_size / sizeof(float));
 		memcpy(audio_frame->sample_data.ptrw(), frame->data[0], data_size);
 		audio_buffer_mutex.lock();
-		decoded_audio_frames.push_back(audio_frame);
+		if (!skip_current_outputs.is_set()) {
+			decoded_audio_frames.push_back(audio_frame);
+		}
 		audio_buffer_mutex.unlock();
 
 		av_frame_unref(p_received_frame);
@@ -651,13 +657,15 @@ AVFrame *VideoDecoder::_ensure_frame_audio_format(AVFrame *p_frame, AVSampleForm
 
 void VideoDecoder::seek(double p_time, bool p_wait) {
 	decoded_frames_mutex.lock();
-	decoded_frames.clear();
-	decoded_frames_mutex.unlock();
 	audio_buffer_mutex.lock();
-	decoded_audio_frames.clear();
-	audio_buffer_mutex.unlock();
-	last_decoded_frame_time.set(p_time);
 
+	decoded_frames.clear();
+	decoded_audio_frames.clear();
+
+	last_decoded_frame_time.set(p_time);
+	skip_current_outputs.set();
+	decoded_frames_mutex.unlock();
+	audio_buffer_mutex.unlock();
 	if (p_wait) {
 		decoder_commands.push_and_sync(this, &VideoDecoder::_seek_command, p_time);
 	} else {
