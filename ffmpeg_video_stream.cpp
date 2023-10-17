@@ -217,7 +217,7 @@ void FFmpegVideoStreamPlayback::set_paused_internal(bool p_paused) {
 }
 
 void FFmpegVideoStreamPlayback::play_internal() {
-	if (!playing) {
+	if (!playing && decoder->get_decoder_state() == VideoDecoder::RUNNING) {
 		clear();
 		playback_position = 0;
 		decoder->seek(0, true);
