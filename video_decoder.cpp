@@ -453,7 +453,10 @@ void VideoDecoder::_read_decoded_frames(AVFrame *p_received_frame) {
 			uint8_t *unwrapped_frame_ptrw = unwrapped_frame.ptrw();
 			{
 				ZoneNamedN(image_unwrap_memcopy, "memcpy", true);
-				memcpy(unwrapped_frame_ptrw, frame->get_frame()->data[0], frame_size);
+				for (int y = 0; y < height; y++) {
+					memcpy(unwrapped_frame_ptrw, frame->get_frame()->data[0] + y * frame->get_frame()->linesize[0], width * 4);
+					unwrapped_frame_ptrw += width * 4;
+				}
 			}
 			unwrapped_frame.resize(width * height * 4);
 			if (!image.is_valid()) {
