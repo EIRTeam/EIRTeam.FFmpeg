@@ -459,11 +459,7 @@ void VideoDecoder::_read_decoded_frames(AVFrame *p_received_frame) {
 				}
 			}
 			unwrapped_frame.resize(width * height * 4);
-			if (!image.is_valid()) {
-				image = Image::create_from_data(width, height, false, Image::FORMAT_RGBA8, unwrapped_frame);
-			} else {
-				image->set_data(width, height, false, Image::FORMAT_RGBA8, unwrapped_frame);
-			}
+			image = Image::create_from_data(width, height, false, Image::FORMAT_RGBA8, unwrapped_frame);
 		}
 #ifdef FFMPEG_MT_GPU_UPLOAD
 		Ref<ImageTexture> tex;
