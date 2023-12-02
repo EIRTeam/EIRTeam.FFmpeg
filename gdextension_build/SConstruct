@@ -20,6 +20,19 @@ env = SConscript("./godot-cpp/SConstruct")
 env.__class__.disable_warnings = methods.disable_warnings
 env.__class__.Run = methods.Run
 
+
+# Allow generation of compilation DB (`compile_commands.json`) for intellisense / code hinting
+# Generating the compilation DB requires SCons 4.0.0 or later.
+from SCons import __version__ as scons_raw_version
+
+scons_ver = env._get_major_minor_revision(scons_raw_version)
+
+if scons_ver < (4, 0, 0):
+    print("Warning: The `compiledb` option requires SCons 4.0 or later, but your version is %s. `compiledb` is not enabled." % scons_raw_version)
+else:
+    env.Tool("compilation_db")
+    env.Alias("compiledb", env.CompilationDatabase('../compile_commands.json'))
+
 addon_base_dir = "build/addons/ffmpeg/"
 addon_platform_dir = addon_base_dir
 
