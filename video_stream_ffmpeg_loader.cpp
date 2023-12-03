@@ -91,6 +91,10 @@ PackedStringArray VideoStreamFFMpegLoader::_get_recognized_extensions() const {
 	return recognized_extension_cache;
 }
 
+bool VideoStreamFFMpegLoader::_handles_type(const StringName &p_type) const {
+	return VideoStreamFFMpegLoader::handles_type_internal(p_type);
+}
+
 Variant VideoStreamFFMpegLoader::_load(const String &p_path, const String &p_original_path, bool p_use_sub_threads, int32_t p_cache_mode) const {
 	return load_internal(p_path, p_original_path, nullptr, p_use_sub_threads, nullptr, (CacheMode)p_cache_mode);
 }
