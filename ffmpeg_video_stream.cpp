@@ -85,9 +85,9 @@ void FFmpegVideoStreamPlayback::update_internal(double p_delta) {
 		// if at the end of the stream but our playback enters a valid time region again, a seek operation is required to get the decoder back on track.
 		if (playback_position < decoder->get_last_decoded_frame_time()) {
 			seek_into_sync();
+		} else {
+			playing = false;
 		}
-	} else if (decoder->get_decoder_state() == VideoDecoder::DecoderState::END_OF_STREAM) {
-		playing = false;
 	}
 
 	Ref<DecodedFrame> peek_frame = available_frames.size() > 0 ? available_frames[0] : nullptr;
