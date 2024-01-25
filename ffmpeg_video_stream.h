@@ -34,6 +34,7 @@
 #ifdef GDEXTENSION
 
 // Headers for building as GDExtension plug-in.
+#include <godot_cpp/classes/texture2drd.hpp>
 #include <godot_cpp/classes/video_stream.hpp>
 #include <godot_cpp/classes/video_stream_playback.hpp>
 #include <godot_cpp/godot.hpp>
@@ -45,18 +46,47 @@ using namespace godot;
 #else
 
 #include "core/object/ref_counted.h"
+#include "scene/resources/atlas_texture.h"
+#include "scene/resources/texture_rd.h"
 #include "scene/resources/video_stream.h"
 
 #endif
 
 #include "video_decoder.h"
 
+class YUVGPUConverter : public RefCounted {
+	RID shader;
+	Ref<Image> yuv_plane_images[3];
+	RID yuv_plane_textures[3];
+	RID yuv_planes_uniform_sets[3];
+	RID pipeline;
+	Ref<Texture2DRD> out_texture;
+	RID out_uniform_set;
+	Vector2i frame_size;
+
+private:
+	void _ensure_pipeline();
+	Error _ensure_plane_textures();
+	Error _ensure_output_texture();
+	RID _create_uniform_set(const RID &p_texture_rd_rid);
+	void _upload_plane_images();
+
+public:
+	void set_plane_image(int p_plane_idx, Ref<Image> p_image);
+	Vector2i get_frame_size() const;
+	void set_frame_size(const Vector2i &p_frame_size);
+	void convert();
+	Ref<Texture2D> get_output_texture() const;
+	YUVGPUConverter();
+	~YUVGPUConverter();
+};
+
 // We have to use this function redirection system for GDExtension because the naming conventions
 // for the functions we are supposed to override are different there
-
 #include "gdextension_build/func_redirect.h"
 class FFmpegVideoStreamPlayback : public VideoStreamPlayback {
 	GDCLASS(FFmpegVideoStreamPlayback, VideoStreamPlayback);
+
 	const int LENIENCE_BEFORE_SEEK = 2500;
 	double playback_position = 0.0f;
 
@@ -69,6 +99,7 @@ class FFmpegVideoStreamPlayback : public VideoStreamPlayback {
 #endif
 	Ref<Image> last_frame_image;
 	Ref<ImageTexture> texture;
+	Ref<Texture2DRD> yuv_texture;
 	bool looping = false;
 	bool buffering = false;
 	int frames_processed = 0;
@@ -78,6 +109,8 @@ class FFmpegVideoStreamPlayback : public VideoStreamPlayback {
 	bool check_next_audio_frame_valid(Ref<DecodedAudioFrame> p_decoded_frame);
 	bool paused = false;
 	bool playing = false;
+
+	Ref<YUVGPUConverter> yuv_converter;
 
 private:
 	bool is_paused_internal() const;

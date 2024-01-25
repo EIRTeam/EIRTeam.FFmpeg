@@ -41,6 +41,9 @@ else:
 ffmpeg_install_action = ffmpeg_download.ffmpeg_install(env_ffmpeg, "#bin", "thirdparty/ffmpeg")
 env_ffmpeg.Depends(sources, ffmpeg_install_action)
 
+env_ffmpeg.GLSL_HEADER("yuv_to_rgb.glsl")
+env_ffmpeg.Depends(Glob("*.glsl.gen.h"), ["#glsl_builders.py"])
+
 # env_ffmpeg.Append(CPPDEFINES=["FFMPEG_MT_GPU_UPLOAD"])
 if ARGUMENTS.get("ffmpeg_shared", "no") == "yes":
     # Shared lib compilation

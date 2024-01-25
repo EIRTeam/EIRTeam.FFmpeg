@@ -29,13 +29,73 @@
 /**************************************************************************/
 
 #include "ffmpeg_video_stream.h"
+#include <iterator>
 
 #ifdef GDEXTENSION
 #include "gdextension_build/gdex_print.h"
+#include <godot_cpp/classes/rd_shader_file.hpp>
+#include <godot_cpp/classes/rd_shader_source.hpp>
+#include <godot_cpp/classes/rd_shader_spirv.hpp>
+#include <godot_cpp/classes/rd_texture_format.hpp>
+#include <godot_cpp/classes/rd_texture_view.hpp>
+#include <godot_cpp/classes/rd_uniform.hpp>
+#include <godot_cpp/classes/rendering_device.hpp>
+#include <godot_cpp/classes/rendering_server.hpp>
+typedef RenderingDevice RD;
+typedef RenderingServer RS;
+typedef RDTextureView RDTextureViewC;
+struct RDTextureFormatC {
+	RenderingDevice::DataFormat format;
+	int width;
+	int height;
+	int usage_bits;
+	int depth;
+	int array_layers;
+	int mipmaps;
+
+	Ref<RDTextureFormat> get_texture_format() {
+		Ref<RDTextureFormat> tf;
+		tf.instantiate();
+		tf->set_height(height);
+		tf->set_width(width);
+		tf->set_usage_bits(usage_bits);
+		tf->set_format(format);
+		tf->set_depth(depth);
+		tf->set_array_layers(array_layers);
+		tf->set_mipmaps(mipmaps);
+		return tf;
+	}
+};
+RDTextureFormatC tfc_from_rdtf(Ref<RDTextureFormat> p_texture_format) {
+	RDTextureFormatC tfc;
+	tfc.width = p_texture_format->get_width();
+	tfc.height = p_texture_format->get_height();
+	tfc.usage_bits = p_texture_format->get_usage_bits();
+	tfc.format = p_texture_format->get_format();
+	tfc.depth = p_texture_format->get_depth();
+	tfc.array_layers = p_texture_format->get_array_layers();
+	tfc.mipmaps = p_texture_format->get_mipmaps();
+	return tfc;
+}
+
+typedef int64_t ComputeListID;
+#define TEXTURE_FORMAT_COMPAT(tf) tfc_from_rdtf(tf);
+#else
+#include "servers/rendering/rendering_device_binds.h"
+typedef RD::TextureFormat RDTextureFormatC;
+typedef RD::TextureView RDTextureViewC;
+#define TEXTURE_FORMAT_COMPAT(tf) tf;
+typedef RD::ComputeListID ComputeListID;
 #endif
 
 #include "tracy_import.h"
+#include "yuv_to_rgb.glsl.gen.h"
 
+#ifdef GDEXTENSION
+#define FREE_RD_RID(rid) RS::get_singleton()->get_rendering_device()->free_rid(rid);
+#else
+#define FREE_RD_RID(rid) RS::get_singleton()->get_rendering_device()->free(rid);
+#endif
 void FFmpegVideoStreamPlayback::seek_into_sync() {
 	decoder->seek(playback_position);
 	Vector<Ref<DecodedFrame>> decoded_frames;
@@ -127,7 +187,22 @@ void FFmpegVideoStreamPlayback::update_internal(double p_delta) {
 	}
 #ifndef FFMPEG_MT_GPU_UPLOAD
 	if (got_new_frame) {
-		if (texture.is_valid()) {
+		// YUV conversion
+		if (last_frame->get_format() == FFmpegFrameFormat::YUV420P) {
+			Ref<Image> y_plane = last_frame->get_yuv_image_plane(0);
+			Ref<Image> u_plane = last_frame->get_yuv_image_plane(1);
+			Ref<Image> v_plane = last_frame->get_yuv_image_plane(2);
+
+			ERR_FAIL_COND(!y_plane.is_valid());
+			ERR_FAIL_COND(!u_plane.is_valid());
+			ERR_FAIL_COND(!v_plane.is_valid());
+
+			yuv_converter->set_plane_image(0, y_plane);
+			yuv_converter->set_plane_image(1, u_plane);
+			yuv_converter->set_plane_image(2, v_plane);
+			yuv_converter->convert();
+			// RGBA texture handling
+		} else if (texture.is_valid()) {
 			if (texture->get_size() != last_frame_image->get_size() || texture->get_format() != last_frame_image->get_format()) {
 				ZoneNamedN(__img_upate_slow, "Image update slow", true);
 				texture->set_image(last_frame_image); // should never happen, but life has many doors ed-boy...
@@ -195,11 +270,17 @@ void FFmpegVideoStreamPlayback::load(Ref<FileAccess> p_file_access) {
 	decoder->start_decoding();
 	Vector2i size = decoder->get_size();
 	if (decoder->get_decoder_state() != VideoDecoder::FAULTED) {
+		if (decoder->get_frame_format() == FFmpegFrameFormat::YUV420P) {
+			yuv_converter.instantiate();
+			yuv_converter->set_frame_size(size);
+			yuv_texture = yuv_converter->get_output_texture();
+		} else {
 #ifdef GDEXTENSION
-		texture = ImageTexture::create_from_image(Image::create(size.x, size.y, false, Image::FORMAT_RGBA8));
+			texture = ImageTexture::create_from_image(Image::create(size.x, size.y, false, Image::FORMAT_RGBA8));
 #else
-		texture = ImageTexture::create_from_image(Image::create_empty(size.x, size.y, false, Image::FORMAT_RGBA8));
+			texture = ImageTexture::create_from_image(Image::create_empty(size.x, size.y, false, Image::FORMAT_RGBA8));
 #endif
+		}
 	}
 }
 
@@ -250,6 +331,9 @@ Ref<Texture2D> FFmpegVideoStreamPlayback::get_texture_internal() const {
 #ifdef FFMPEG_MT_GPU_UPLOAD
 	return last_frame_texture;
 #else
+	if (yuv_converter.is_valid()) {
+		return yuv_converter->get_output_texture();
+	}
 	return texture;
 #endif
 }
@@ -276,4 +360,238 @@ void FFmpegVideoStreamPlayback::clear() {
 	available_audio_frames.clear();
 	frames_processed = 0;
 	playing = false;
+}
+
+YUVGPUConverter::~YUVGPUConverter() {
+	RenderingDevice *rd = RS::get_singleton()->get_rendering_device();
+
+	for (size_t i = 0; i < std::size(yuv_planes_uniform_sets); i++) {
+		if (yuv_planes_uniform_sets[i].is_valid()) {
+			FREE_RD_RID(yuv_planes_uniform_sets[i]);
+		}
+		if (yuv_plane_textures[i].is_valid()) {
+			FREE_RD_RID(yuv_plane_textures[i]);
+		}
+	}
+
+	if (out_texture.is_valid() && out_texture->get_texture_rd_rid().is_valid()) {
+		FREE_RD_RID(out_texture->get_texture_rd_rid());
+	}
+
+	if (pipeline.is_valid()) {
+		FREE_RD_RID(pipeline);
+	}
+
+	if (shader.is_valid()) {
+		FREE_RD_RID(shader);
+	}
+}
+
+void YUVGPUConverter::_ensure_pipeline() {
+	if (pipeline.is_valid()) {
+		return;
+	}
+
+	RD *rd = RS::get_singleton()->get_rendering_device();
+
+#ifdef GDEXTENSION
+
+	Ref<RDShaderSource> shader_source;
+	shader_source.instantiate();
+	// Ugly hack to skip the #[compute] in the header, because parse_versions_from_text is not available through GDNative
+	shader_source->set_stage_source(RenderingDevice::ShaderStage::SHADER_STAGE_COMPUTE, yuv_to_rgb_shader_glsl + 10);
+	Ref<RDShaderSPIRV> shader_spirv = rd->shader_compile_spirv_from_source(shader_source);
+	print_line("MAKE SHADER");
+
+#else
+
+	Ref<RDShaderFile> shader_file;
+	shader_file.instantiate();
+	Error err = shader_file->parse_versions_from_text(yuv_to_rgb_shader_glsl);
+	if (err != OK) {
+		print_line("Something catastrophic happened, call eirexe");
+	}
+	Vector<RD::ShaderStageSPIRVData> shader_spirv = shader_file->get_spirv_stages();
+
+#endif
+	shader = rd->shader_create_from_spirv(shader_spirv);
+	pipeline = rd->compute_pipeline_create(shader);
+}
+
+Error YUVGPUConverter::_ensure_plane_textures() {
+	RD *rd = RS::get_singleton()->get_rendering_device();
+	for (size_t i = 0; i < std::size(yuv_plane_textures); i++) {
+		if (yuv_plane_textures[i].is_valid()) {
+			RDTextureFormatC format = TEXTURE_FORMAT_COMPAT(rd->texture_get_format(yuv_plane_textures[i]));
+
+			int desired_frame_width = i == 0 ? frame_size.width : Math::ceil(frame_size.width / 2.0f);
+			int desired_frame_height = i == 0 ? frame_size.height : Math::ceil(frame_size.height / 2.0f);
+
+			if (format.width == desired_frame_width && format.height == desired_frame_height) {
+				continue;
+			}
+			continue;
+		}
+
+		// Texture didn't exist or was invalid, re-create it
+
+		// free existing texture if needed
+		if (yuv_plane_textures[i].is_valid()) {
+			FREE_RD_RID(yuv_plane_textures[i]);
+		}
+
+		RDTextureFormatC new_format;
+		new_format.format = RenderingDevice::DATA_FORMAT_R8_UNORM;
+		// chroma planes are half the size of the luma plane
+		new_format.width = i == 0 ? frame_size.width : Math::ceil(frame_size.width / 2.0f);
+		new_format.height = i == 0 ? frame_size.height : Math::ceil(frame_size.height / 2.0f);
+		new_format.depth = 1;
+		new_format.array_layers = 1;
+		new_format.mipmaps = 1;
+		new_format.usage_bits = RD::TEXTURE_USAGE_SAMPLING_BIT | RD::TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | RD::TEXTURE_USAGE_STORAGE_BIT | RD::TEXTURE_USAGE_CAN_UPDATE_BIT;
+
+#ifdef GDEXTENSION
+		Ref<RDTextureFormat> new_format_c = new_format.get_texture_format();
+		Ref<RDTextureViewC> texture_view;
+		texture_view.instantiate();
+#else
+		RD::TextureFormat new_format_c = new_format;
+		RDTextureViewC texture_view;
+#endif
+		yuv_plane_textures[i] = rd->texture_create(new_format_c, texture_view);
+
+		if (yuv_planes_uniform_sets[i].is_valid()) {
+			FREE_RD_RID(yuv_planes_uniform_sets[i]);
+		}
+
+		yuv_planes_uniform_sets[i] = _create_uniform_set(yuv_plane_textures[i]);
+	}
+
+	return OK;
+}
+
+Error YUVGPUConverter::_ensure_output_texture() {
+	_ensure_pipeline();
+	RD *rd = RS::get_singleton()->get_rendering_device();
+	if (!out_texture.is_valid()) {
+		out_texture.instantiate();
+	}
+
+	if (out_texture->get_texture_rd_rid().is_valid()) {
+		RDTextureFormatC format = TEXTURE_FORMAT_COMPAT(rd->texture_get_format(out_texture->get_texture_rd_rid()));
+		if (format.width == frame_size.width && format.height == frame_size.height) {
+			return OK;
+		}
+	}
+
+	if (out_texture->get_texture_rd_rid().is_valid()) {
+		FREE_RD_RID(out_texture->get_texture_rd_rid());
+	}
+
+	print_line("CRECREATE OUTPUT TEXTURE");
+
+	RDTextureFormatC out_texture_format;
+	out_texture_format.format = RenderingDevice::DATA_FORMAT_R8G8B8A8_UNORM;
+	out_texture_format.width = frame_size.width;
+	out_texture_format.height = frame_size.height;
+	out_texture_format.depth = 1;
+	out_texture_format.array_layers = 1;
+	out_texture_format.mipmaps = 1;
+	// RD::TEXTURE_USAGE_CAN_UPDATE_BIT not needed since we won't update it from the CPU
+	out_texture_format.usage_bits = RD::TEXTURE_USAGE_SAMPLING_BIT | RD::TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | RD::TEXTURE_USAGE_STORAGE_BIT;
+
+#ifdef GDEXTENSION
+	Ref<RDTextureView> texture_view;
+	texture_view.instantiate();
+	Ref<RDTextureFormat> out_texture_format_c = out_texture_format.get_texture_format();
+#else
+	RD::TextureFormat out_texture_format_c = out_texture_format;
+	RD::TextureView texture_view;
+#endif
+	out_texture->set_texture_rd_rid(rd->texture_create(out_texture_format_c, texture_view));
+
+	if (out_uniform_set.is_valid()) {
+		FREE_RD_RID(out_uniform_set);
+	}
+	out_uniform_set = _create_uniform_set(out_texture->get_texture_rd_rid());
+	return OK;
+}
+
+RID YUVGPUConverter::_create_uniform_set(const RID &p_texture_rd_rid) {
+#ifdef GDEXTENSION
+	Ref<RDUniform> uniform;
+	uniform.instantiate();
+	uniform->set_binding(0);
+	uniform->set_uniform_type(RD::UNIFORM_TYPE_IMAGE);
+	uniform->add_id(p_texture_rd_rid);
+	TypedArray<RDUniform> uniforms;
+	uniforms.push_back(uniform);
+#else
+	RD::Uniform uniform;
+	uniform.uniform_type = RD::UNIFORM_TYPE_IMAGE;
+	uniform.binding = 0;
+	uniform.append_id(p_texture_rd_rid);
+	Vector<RD::Uniform> uniforms;
+	uniforms.push_back(uniform);
+#endif
+	return RS::get_singleton()->get_rendering_device()->uniform_set_create(uniforms, shader, 0);
+}
+
+void YUVGPUConverter::_upload_plane_images() {
+	for (size_t i = 0; i < std::size(yuv_plane_images); i++) {
+		ERR_CONTINUE_MSG(!yuv_plane_images[i].is_valid(), vformat("YUV plane %d was missing, cannot upload texture data.", i));
+		RS::get_singleton()->get_rendering_device()->texture_update(yuv_plane_textures[i], 0, yuv_plane_images[i]->get_data());
+	}
+}
+
+void YUVGPUConverter::set_plane_image(int p_plane_idx, Ref<Image> p_image) {
+	ERR_FAIL_COND(!p_image.is_valid());
+	ERR_FAIL_INDEX((size_t)p_plane_idx, std::size(yuv_plane_images));
+	// Sanity checks
+	int desired_frame_width = p_plane_idx == 0 ? frame_size.width : Math::ceil(frame_size.width / 2.0f);
+	int desired_frame_height = p_plane_idx == 0 ? frame_size.height : Math::ceil(frame_size.height / 2.0f);
+	ERR_FAIL_COND_MSG(p_image->get_width() != desired_frame_width, vformat("Wrong YUV plane width for plane %d, expected %d got %d", p_plane_idx, desired_frame_width, p_image->get_width()));
+	ERR_FAIL_COND_MSG(p_image->get_height() != desired_frame_height, vformat("Wrong YUV plane height for plane %, expected %d got %d", p_plane_idx, desired_frame_height, p_image->get_height()));
+	ERR_FAIL_COND_MSG(p_image->get_format() != Image::FORMAT_R8, "Wrong image format, expected R8");
+	yuv_plane_images[p_plane_idx] = p_image;
+}
+
+Vector2i YUVGPUConverter::get_frame_size() const { return frame_size; }
+
+void YUVGPUConverter::set_frame_size(const Vector2i &p_frame_size) {
+	ERR_FAIL_COND_MSG(p_frame_size.x == 0, "Frame size cannot be zero!");
+	ERR_FAIL_COND_MSG(p_frame_size.y == 0, "Frame size cannot be zero!");
+	frame_size = p_frame_size;
+
+	yuv_plane_images[0].unref();
+	yuv_plane_images[1].unref();
+	yuv_plane_images[2].unref();
+}
+
+void YUVGPUConverter::convert() {
+	// First we must ensure everything we need exists
+	_ensure_pipeline();
+	_ensure_plane_textures();
+	_ensure_output_texture();
+	_upload_plane_images();
+
+	RD *rd = RS::get_singleton()->get_rendering_device();
+
+	ComputeListID compute_list = rd->compute_list_begin();
+	rd->compute_list_bind_compute_pipeline(compute_list, pipeline);
+	rd->compute_list_bind_uniform_set(compute_list, yuv_planes_uniform_sets[0], 0);
+	rd->compute_list_bind_uniform_set(compute_list, yuv_planes_uniform_sets[1], 1);
+	rd->compute_list_bind_uniform_set(compute_list, yuv_planes_uniform_sets[2], 2);
+	rd->compute_list_bind_uniform_set(compute_list, out_uniform_set, 3);
+	rd->compute_list_dispatch(compute_list, Math::ceil(frame_size.x / 8.0f), Math::ceil(frame_size.y / 8.0f), 1);
+	rd->compute_list_end();
+}
+
+Ref<Texture2D> YUVGPUConverter::get_output_texture() const {
+	const_cast<YUVGPUConverter *>(this)->_ensure_output_texture();
+	return out_texture;
+}
+
+YUVGPUConverter::YUVGPUConverter() {
+	out_texture.instantiate();
 }

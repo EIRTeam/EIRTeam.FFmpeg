@@ -5,6 +5,7 @@ import sys
 import methods
 import time
 import ffmpeg_download
+import glsl_builders
 
 # For the reference:
 # - CCFLAGS are compilation flags shared between C and C++
@@ -20,6 +21,14 @@ env = SConscript("./godot-cpp/SConstruct")
 env.__class__.disable_warnings = methods.disable_warnings
 env.__class__.Run = methods.Run
 
+GLSL_BUILDERS = {
+    "GLSL_HEADER": env.Builder(
+        action=env.Run(glsl_builders.build_raw_headers, 'Building GLSL header: "$TARGET"'),
+        suffix="glsl.gen.h",
+        src_suffix=".glsl",
+    ),
+}
+env.Append(BUILDERS=GLSL_BUILDERS)
 
 # Allow generation of compilation DB (`compile_commands.json`) for intellisense / code hinting
 # Generating the compilation DB requires SCons 4.0.0 or later.
@@ -98,6 +107,9 @@ env.Depends(sources, env.Install(addon_base_dir, "ffmpeg.gdextension"))
 license_install_action = env.InstallAs(f"{addon_base_dir}LICENSE-ffmpeg.txt", FFMPEG_DUMMY)
 env.Depends(sources, ffmpeg_install_action)
 env.Depends(sources, license_install_action)
+
+env.GLSL_HEADER("../yuv_to_rgb.glsl")
+env.Depends(Glob("../*.glsl.gen.h"), ["#glsl_builders.py"])
 
 Default(library)
 

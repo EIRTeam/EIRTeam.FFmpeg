@@ -32,9 +32,11 @@
 #include "ffmpeg_frame.h"
 
 #include "tracy_import.h"
+#include <iterator>
 
 #ifdef GDEXTENSION
 #include "gdextension_build/gdex_print.h"
+#include <godot_cpp/classes/rendering_server.hpp>
 #endif
 
 extern "C" {
@@ -151,6 +153,12 @@ void VideoDecoder::recreate_codec_context() {
 	}
 
 	AVCodecParameters codec_params = *video_stream->codecpar;
+	// YUV conversion needs rendering device
+	if (codec_params.format == AVPixelFormat::AV_PIX_FMT_YUV420P && RenderingServer::get_singleton()->get_rendering_device()) {
+		frame_format = FFmpegFrameFormat::YUV420P;
+	} else {
+		frame_format = FFmpegFrameFormat::RGBA8;
+	}
 	BitField<HardwareVideoDecoder> target_hw_decoders = hw_decoding_allowed ? target_hw_video_decoders : HardwareVideoDecoder::NONE;
 
 	for (const AvailableDecoderInfo &info : get_available_decoders(format_context->iformat, codec_params.codec_id, target_hw_decoders)) {
@@ -435,6 +443,17 @@ void VideoDecoder::_read_decoded_frames(AVFrame *p_received_frame) {
 
 		last_decoded_frame_time.set(frame_time);
 
+		if (frame_format == FFmpegFrameFormat::YUV420P) {
+			// Special path for YUV images
+			Ref<DecodedFrame> yuv_frame = _unwrap_yuv_frame(frame_time, frame);
+			decoded_frames_mutex.lock();
+			if (!skip_current_outputs.is_set()) {
+				decoded_frames.push_back(yuv_frame);
+			}
+			decoded_frames_mutex.unlock();
+			continue;
+		}
+
 		// Note: this is the pixel format that the video texture expects internally
 		frame = _ensure_frame_pixel_format(frame, AVPixelFormat::AV_PIX_FMT_RGBA);
 		if (!frame.is_valid()) {
@@ -552,6 +571,8 @@ void VideoDecoder::_scaler_frame_return(Ref<VideoDecoder> p_decoder, Ref<FFmpegF
 
 Ref<FFmpegFrame> VideoDecoder::_ensure_frame_pixel_format(Ref<FFmpegFrame> p_frame, AVPixelFormat p_target_pixel_format) {
 	ZoneScopedN("Video decoder rescale");
+
+	print_line(p_frame->get_frame()->format);
 	if (p_frame->get_frame()->format == p_target_pixel_format) {
 		return p_frame;
 	}
@@ -609,6 +630,39 @@ Ref<FFmpegFrame> VideoDecoder::_ensure_frame_pixel_format(Ref<FFmpegFrame> p_fra
 	}
 
 	return scaler_frame;
+}
+
+Ref<DecodedFrame> VideoDecoder::_unwrap_yuv_frame(double p_frame_time, Ref<FFmpegFrame> p_frame) {
+	PackedByteArray temp_frame_storage;
+	Ref<DecodedFrame> out_frame = memnew(DecodedFrame(p_frame_time, Ref<Image>()));
+	for (size_t plane_i = 0; plane_i < 3; plane_i++) {
+		ZoneNamedN(yuv_image_unwrap_copy, "YUV Image unwrap copy", true);
+
+		int width = p_frame->get_frame()->width;
+		int height = p_frame->get_frame()->height;
+
+		if (plane_i > 0) {
+			width = Math::ceil(width / 2.0f);
+			height = Math::ceil(height / 2.0f);
+		}
+
+		int frame_size = p_frame->get_frame()->buf[plane_i]->size;
+		temp_frame_storage.resize(frame_size);
+		uint8_t *unwrapped_frame_ptrw = temp_frame_storage.ptrw();
+		{
+			ZoneNamedN(yuv_image_unwrap_memcopy, "YUV memcpy", true);
+			for (int y = 0; y < height; y++) {
+				memcpy(unwrapped_frame_ptrw, p_frame->get_frame()->buf[plane_i]->data + y * p_frame->get_frame()->linesize[plane_i], width);
+				unwrapped_frame_ptrw += width;
+			}
+		}
+		temp_frame_storage.resize(width * height);
+		out_frame->set_yuv_image_plane(plane_i, Image::create_from_data(width, height, false, Image::FORMAT_R8, temp_frame_storage));
+	}
+
+	out_frame->set_format(FFmpegFrameFormat::YUV420P);
+
+	return out_frame;
 }
 
 AVFrame *VideoDecoder::_ensure_frame_audio_format(AVFrame *p_frame, AVSampleFormat p_target_audio_format) {
@@ -877,6 +931,7 @@ DecodedFrame::DecodedFrame(double p_time, Ref<ImageTexture> p_texture) {
 DecodedFrame::DecodedFrame(double p_time, Ref<Image> p_image) {
 	time = p_time;
 	image = p_image;
+	format = FFmpegFrameFormat::RGBA8;
 }
 
 Ref<ImageTexture> DecodedFrame::get_texture() const { return texture; }
@@ -886,6 +941,16 @@ void DecodedFrame::set_texture(const Ref<ImageTexture> &p_texture) { texture = p
 double DecodedFrame::get_time() const { return time; }
 
 void DecodedFrame::set_time(double p_time) { time = p_time; }
+
+void DecodedFrame::set_yuv_image_plane(int p_plane_idx, Ref<Image> p_image) {
+	ERR_FAIL_INDEX((size_t)p_plane_idx, std::size(yuv_images));
+	yuv_images[p_plane_idx] = p_image;
+}
+
+Ref<Image> DecodedFrame::get_yuv_image_plane(int p_plane_idx) const {
+	ERR_FAIL_INDEX_V((size_t)p_plane_idx, std::size(yuv_images), Ref<Image>());
+	return yuv_images[p_plane_idx];
+}
 
 double DecodedAudioFrame::get_time() const {
 	return time;
