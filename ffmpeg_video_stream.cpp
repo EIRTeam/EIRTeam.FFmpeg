@@ -363,8 +363,6 @@ void FFmpegVideoStreamPlayback::clear() {
 }
 
 YUVGPUConverter::~YUVGPUConverter() {
-	RenderingDevice *rd = RS::get_singleton()->get_rendering_device();
-
 	for (size_t i = 0; i < std::size(yuv_planes_uniform_sets); i++) {
 		if (yuv_planes_uniform_sets[i].is_valid()) {
 			FREE_RD_RID(yuv_planes_uniform_sets[i]);
@@ -427,7 +425,7 @@ Error YUVGPUConverter::_ensure_plane_textures() {
 			int desired_frame_width = i == 0 ? frame_size.width : Math::ceil(frame_size.width / 2.0f);
 			int desired_frame_height = i == 0 ? frame_size.height : Math::ceil(frame_size.height / 2.0f);
 
-			if (format.width == desired_frame_width && format.height == desired_frame_height) {
+			if (static_cast<int>(format.width) == desired_frame_width && static_cast<int>(format.height) == desired_frame_height) {
 				continue;
 			}
 			continue;
@@ -479,7 +477,7 @@ Error YUVGPUConverter::_ensure_output_texture() {
 
 	if (out_texture->get_texture_rd_rid().is_valid()) {
 		RDTextureFormatC format = TEXTURE_FORMAT_COMPAT(rd->texture_get_format(out_texture->get_texture_rd_rid()));
-		if (format.width == frame_size.width && format.height == frame_size.height) {
+		if (static_cast<int>(format.width) == frame_size.width && static_cast<int>(format.height) == frame_size.height) {
 			return OK;
 		}
 	}
