@@ -34,32 +34,16 @@
 #include <godot_cpp/variant/utility_functions.hpp>
 #endif
 
+void FFmpegFrame::_bind_methods() {
+	ADD_SIGNAL(MethodInfo("return_frame", PropertyInfo(Variant::OBJECT, "frame", PROPERTY_HINT_RESOURCE_TYPE, "FFmpegFrame")));
+}
+
 AVFrame *FFmpegFrame::get_frame() const {
 	return frame;
 }
 
 void FFmpegFrame::do_return() {
-	if (return_func && return_instance.is_valid()) {
-		Ref<RefCounted> instance_ref = return_instance->get_ref();
-		if (!instance_ref.is_valid()) {
-			return;
-		}
-		return_func(instance_ref, this);
-	}
-}
-
-FFmpegFrame::FFmpegFrame(Ref<RefCounted> p_return_func_instance, return_frame_callback_t p_return_func) {
-	if (p_return_func && p_return_func_instance.is_valid()) {
-		return_func = p_return_func;
-#ifdef GDEXTENSION
-		return_instance = UtilityFunctions::weakref(p_return_func_instance);
-#else
-		return_instance.instantiate();
-		return_instance->set_ref(p_return_func_instance);
-		return_instance = p_return_func_instance;
-#endif
-	}
-	frame = av_frame_alloc();
+	emit_signal("return_frame", this);
 }
 
 FFmpegFrame::FFmpegFrame() {

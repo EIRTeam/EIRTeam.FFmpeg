@@ -423,11 +423,8 @@ void VideoDecoder::_read_decoded_frames(AVFrame *p_received_frame) {
 			}
 
 			if (!hw_transfer_frame.is_valid()) {
-				// Leave me alone until i port this to callable_mp
-				#pragma GCC diagnostic push
-				#pragma GCC diagnostic ignored "-Wcast-function-type"
-				hw_transfer_frame = Ref<FFmpegFrame>(memnew(FFmpegFrame(Ref<VideoDecoder>(this), (FFmpegFrame::return_frame_callback_t)&VideoDecoder::_hw_transfer_frame_return)));
-				#pragma GCC diagnostic pop
+				hw_transfer_frame.instantiate();
+				hw_transfer_frame->connect("return_frame", callable_mp(this, &VideoDecoder::_hw_transfer_frame_return));
 			}
 
 			int transfer_result = av_hwframe_transfer_data(hw_transfer_frame->get_frame(), p_received_frame, 0);
@@ -441,7 +438,7 @@ void VideoDecoder::_read_decoded_frames(AVFrame *p_received_frame) {
 			frame = hw_transfer_frame;
 		} else {
 			// copy data to a new AVFrame so that `receiveFrame` can be reused.
-			frame = Ref<FFmpegFrame>(memnew(FFmpegFrame()));
+			frame.instantiate();
 			av_frame_move_ref(frame->get_frame(), p_received_frame);
 		}
 
@@ -565,12 +562,12 @@ void VideoDecoder::_read_decoded_audio_frames(AVFrame *p_received_frame) {
 	}
 }
 
-void VideoDecoder::_hw_transfer_frame_return(Ref<VideoDecoder> p_decoder, Ref<FFmpegFrame> p_hw_frame) {
-	p_decoder->hw_transfer_frames.push_back(p_hw_frame);
+void VideoDecoder::_hw_transfer_frame_return(Ref<FFmpegFrame> p_hw_frame) {
+	hw_transfer_frames.push_back(p_hw_frame);
 }
 
-void VideoDecoder::_scaler_frame_return(Ref<VideoDecoder> p_decoder, Ref<FFmpegFrame> p_scaler_frame) {
-	p_decoder->scaler_frames.push_back(p_scaler_frame);
+void VideoDecoder::_scaler_frame_return(Ref<FFmpegFrame> p_scaler_frame) {
+	scaler_frames.push_back(p_scaler_frame);
 }
 
 Ref<FFmpegFrame> VideoDecoder::_ensure_frame_pixel_format(Ref<FFmpegFrame> p_frame, AVPixelFormat p_target_pixel_format) {
@@ -599,11 +596,8 @@ Ref<FFmpegFrame> VideoDecoder::_ensure_frame_pixel_format(Ref<FFmpegFrame> p_fra
 	}
 
 	if (!scaler_frame.is_valid()) {
-		// Leave me alone until i port this to callable_mp
-		#pragma GCC diagnostic push
-		#pragma GCC diagnostic ignored "-Wcast-function-type"
-		scaler_frame = Ref<FFmpegFrame>(memnew(FFmpegFrame(Ref<VideoDecoder>(this), (FFmpegFrame::return_frame_callback_t)&VideoDecoder::_scaler_frame_return)));
-		#pragma GCC diagnostic pop
+		scaler_frame.instantiate();
+		scaler_frame->connect("return_frame", callable_mp(this, &VideoDecoder::_scaler_frame_return));
 	}
 
 	// (re)initialize the scaler frame if needed.
