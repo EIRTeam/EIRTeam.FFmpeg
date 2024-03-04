@@ -147,9 +147,9 @@ void VideoDecoder::prepare_decoding() {
 	}
 }
 
-void VideoDecoder::recreate_codec_context() {
+Error VideoDecoder::recreate_codec_context() {
 	if (video_stream == nullptr) {
-		return;
+		return ERR_BUG;
 	}
 
 	AVCodecParameters codec_params = *video_stream->codecpar;
@@ -161,7 +161,8 @@ void VideoDecoder::recreate_codec_context() {
 	}
 	BitField<HardwareVideoDecoder> target_hw_decoders = hw_decoding_allowed ? target_hw_video_decoders : HardwareVideoDecoder::NONE;
 
-	for (const AvailableDecoderInfo &info : get_available_decoders(format_context->iformat, codec_params.codec_id, target_hw_decoders)) {
+	Vector<AvailableDecoderInfo> available_video_decoders = get_available_video_decoders(format_context->iformat, codec_params.codec_id, target_hw_decoders);
+	for (const AvailableDecoderInfo &info : available_video_decoders) {
 		if (video_codec_context != nullptr) {
 			avcodec_free_context(&video_codec_context);
 		}
@@ -187,12 +188,18 @@ void VideoDecoder::recreate_codec_context() {
 		int open_codec_result = avcodec_open2(video_codec_context, info.codec->get_codec_ptr(), nullptr);
 		ERR_CONTINUE_MSG(open_codec_result < 0, vformat("Error trying to open %s codec: %s", info.codec->get_codec_ptr()->name, ffmpeg_get_error_message(open_codec_result)));
 
-		print_line("Succesfully initialized decoder:", info.codec->get_codec_ptr()->name);
+		print_line("Succesfully initialized video decoder:", info.codec->get_codec_ptr()->name);
 		break;
 	}
+
+	ERR_FAIL_COND_V_MSG(available_video_decoders.size() == 0, ERR_UNAVAILABLE, vformat("Error creating video codec context: Unsupported codec %s", avcodec_get_name(codec_params.codec_id)));
+
+	ERR_FAIL_COND_V_MSG(video_codec_context == nullptr, ERR_CANT_CREATE, vformat("Error creating video codec context: Exhausted all available decoders for codec %s", avcodec_get_name(codec_params.codec_id)));
+
 	if (!audio_stream) {
-		return;
+		return OK;
 	}
+
 	codec_params = *audio_stream->codecpar;
 	const AVCodec *codec = avcodec_find_decoder(codec_params.codec_id);
 	if (codec) {
@@ -200,16 +207,16 @@ void VideoDecoder::recreate_codec_context() {
 			avcodec_free_context(&audio_codec_context);
 		}
 		audio_codec_context = avcodec_alloc_context3(codec);
-		ERR_FAIL_COND_MSG(audio_codec_context == nullptr, vformat("Couldn't allocate codec context: %s", codec->name));
+		ERR_FAIL_COND_V_MSG(audio_codec_context == nullptr, FAILED, vformat("Couldn't allocate audio codec context: %s", codec->name));
 		audio_codec_context->pkt_timebase = audio_stream->time_base;
 
 		int param_copy_result = avcodec_parameters_to_context(audio_codec_context, audio_stream->codecpar);
-		ERR_FAIL_COND_MSG(param_copy_result < 0, vformat("Couldn't copy codec parameters from %s: %s", codec->name, ffmpeg_get_error_message(param_copy_result)));
+		ERR_FAIL_COND_V_MSG(param_copy_result < 0, FAILED, vformat("Couldn't copy codec parameters from %s: %s", codec->name, ffmpeg_get_error_message(param_copy_result)));
 		int open_codec_result = avcodec_open2(audio_codec_context, codec, nullptr);
-		ERR_FAIL_COND_MSG(open_codec_result < 0, vformat("Error trying to open %s codec: %s", codec->name, ffmpeg_get_error_message(open_codec_result)));
-		print_line("Succesfully initialized audio decoder:", codec->name);
+		ERR_FAIL_COND_V_MSG(open_codec_result < 0, ERR_CANT_OPEN, vformat("Error trying to open %s codec: %s", codec->name, ffmpeg_get_error_message(open_codec_result)));
 		has_audio = true;
 	}
+	return OK;
 }
 
 VideoDecoder::HardwareVideoDecoder VideoDecoder::from_av_hw_device_type(AVHWDeviceType p_device_type) {
@@ -732,9 +739,9 @@ void VideoDecoder::start_decoding() {
 	ERR_FAIL_COND_MSG(thread != nullptr, "Cannot start decoding once already started");
 	if (format_context == nullptr) {
 		prepare_decoding();
-		recreate_codec_context();
+		Error codec_context_create_error = recreate_codec_context();
 
-		if (video_stream == nullptr) {
+		if (video_stream == nullptr || codec_context_create_error != OK) {
 			decoder_state = DecoderState::FAULTED;
 			return;
 		}
@@ -775,7 +782,7 @@ struct AvailableDecoderInfoComparator {
 	}
 };
 
-Vector<VideoDecoder::AvailableDecoderInfo> VideoDecoder::get_available_decoders(const AVInputFormat *p_format, AVCodecID p_codec_id, BitField<HardwareVideoDecoder> p_target_decoders) {
+Vector<VideoDecoder::AvailableDecoderInfo> VideoDecoder::get_available_video_decoders(const AVInputFormat *p_format, AVCodecID p_codec_id, BitField<HardwareVideoDecoder> p_target_decoders) {
 	Vector<VideoDecoder::AvailableDecoderInfo> codecs;
 
 	Ref<FFmpegCodec> first_codec;

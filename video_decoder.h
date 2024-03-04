@@ -169,7 +169,7 @@ private:
 	static int _read_packet_callback(void *p_opaque, uint8_t *p_buf, int p_buf_size);
 	static int64_t _stream_seek_callback(void *p_opaque, int64_t p_offset, int p_whence);
 	void prepare_decoding();
-	void recreate_codec_context();
+	Error recreate_codec_context();
 	static HardwareVideoDecoder from_av_hw_device_type(AVHWDeviceType p_device_type);
 
 	void _seek_command(double p_target_timestamp);
@@ -194,7 +194,7 @@ public:
 	};
 	void seek(double p_time, bool p_wait = false);
 	void start_decoding();
-	Vector<AvailableDecoderInfo> get_available_decoders(const AVInputFormat *p_format, AVCodecID p_codec_id, BitField<HardwareVideoDecoder> p_target_decoders);
+	Vector<AvailableDecoderInfo> get_available_video_decoders(const AVInputFormat *p_format, AVCodecID p_codec_id, BitField<HardwareVideoDecoder> p_target_decoders);
 	void return_frames(Vector<Ref<DecodedFrame>> p_frames);
 	void return_frame(Ref<DecodedFrame> p_frame);
 	Vector<Ref<DecodedFrame>> get_decoded_frames();

@@ -264,24 +264,27 @@ void FFmpegVideoStreamPlayback::update_internal(double p_delta) {
 	}
 }
 
-void FFmpegVideoStreamPlayback::load(Ref<FileAccess> p_file_access) {
+Error FFmpegVideoStreamPlayback::load(Ref<FileAccess> p_file_access) {
 	decoder = Ref<VideoDecoder>(memnew(VideoDecoder(p_file_access)));
 
 	decoder->start_decoding();
 	Vector2i size = decoder->get_size();
-	if (decoder->get_decoder_state() != VideoDecoder::FAULTED) {
-		if (decoder->get_frame_format() == FFmpegFrameFormat::YUV420P) {
-			yuv_converter.instantiate();
-			yuv_converter->set_frame_size(size);
-			yuv_texture = yuv_converter->get_output_texture();
-		} else {
-#ifdef GDEXTENSION
-			texture = ImageTexture::create_from_image(Image::create(size.x, size.y, false, Image::FORMAT_RGBA8));
-#else
-			texture = ImageTexture::create_from_image(Image::create_empty(size.x, size.y, false, Image::FORMAT_RGBA8));
-#endif
-		}
+	if (decoder->get_decoder_state() == VideoDecoder::FAULTED) {
+		return FAILED;
 	}
+
+	if (decoder->get_frame_format() == FFmpegFrameFormat::YUV420P) {
+		yuv_converter.instantiate();
+		yuv_converter->set_frame_size(size);
+		yuv_texture = yuv_converter->get_output_texture();
+	} else {
+#ifdef GDEXTENSION
+		texture = ImageTexture::create_from_image(Image::create(size.x, size.y, false, Image::FORMAT_RGBA8));
+#else
+		texture = ImageTexture::create_from_image(Image::create_empty(size.x, size.y, false, Image::FORMAT_RGBA8));
+#endif
+	}
+	return OK;
 }
 
 bool FFmpegVideoStreamPlayback::is_paused_internal() const {

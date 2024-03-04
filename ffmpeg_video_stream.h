@@ -131,7 +131,7 @@ protected:
 	static void _bind_methods(){}; // Required by GDExtension, do not remove
 
 public:
-	void load(Ref<FileAccess> p_file_access);
+	Error load(Ref<FileAccess> p_file_access);
 
 	STREAM_FUNC_REDIRECT_0_CONST(bool, is_paused);
 	STREAM_FUNC_REDIRECT_1(void, update, double, p_delta);
@@ -160,7 +160,9 @@ protected:
 		}
 		Ref<FFmpegVideoStreamPlayback> pb;
 		pb.instantiate();
-		pb->load(fa);
+		if (pb->load(fa) != OK) {
+			return nullptr;
+		}
 		return pb;
 	}
 
