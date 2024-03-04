@@ -1,4 +1,5 @@
 from typing import Optional, Iterable
+from platform_methods import subprocess_main
 
 import os.path
 
@@ -76,3 +77,7 @@ static const char {out_file_base}[] = {{
 def build_raw_headers(target, source, env):
     for x in source:
         build_raw_header(filename=str(x))
+
+
+if __name__ == "__main__":
+    subprocess_main(globals())
