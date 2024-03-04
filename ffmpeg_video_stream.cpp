@@ -402,7 +402,6 @@ void YUVGPUConverter::_ensure_pipeline() {
 	// Ugly hack to skip the #[compute] in the header, because parse_versions_from_text is not available through GDNative
 	shader_source->set_stage_source(RenderingDevice::ShaderStage::SHADER_STAGE_COMPUTE, yuv_to_rgb_shader_glsl + 10);
 	Ref<RDShaderSPIRV> shader_spirv = rd->shader_compile_spirv_from_source(shader_source);
-	print_line("MAKE SHADER");
 
 #else
 
@@ -488,8 +487,6 @@ Error YUVGPUConverter::_ensure_output_texture() {
 	if (out_texture->get_texture_rd_rid().is_valid()) {
 		FREE_RD_RID(out_texture->get_texture_rd_rid());
 	}
-
-	print_line("CRECREATE OUTPUT TEXTURE");
 
 	RDTextureFormatC out_texture_format;
 	out_texture_format.format = RenderingDevice::DATA_FORMAT_R8G8B8A8_UNORM;
