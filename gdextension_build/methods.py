@@ -172,13 +172,14 @@ def run_in_subprocess(builder_function):
     return wrapper
 
 
-def Run(env, function, short_message, subprocess=True):
+def Run(env, function, subprocess=True):
     from SCons.Script import Action
+    from platform_methods import run_in_subprocess
 
     if not subprocess:
-        return Action(function, "")
+        return Action(function, "$GENCOMSTR")
     else:
-        return Action(run_in_subprocess(function), "")
+        return Action(run_in_subprocess(function), "$GENCOMSTR")
 
 
 def CommandNoCache(env, target, sources, command, **args):
