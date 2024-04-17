@@ -496,7 +496,7 @@ Error YUVGPUConverter::_ensure_output_texture() {
 	out_texture_format.array_layers = 1;
 	out_texture_format.mipmaps = 1;
 	// RD::TEXTURE_USAGE_CAN_UPDATE_BIT not needed since we won't update it from the CPU
-	out_texture_format.usage_bits = RD::TEXTURE_USAGE_SAMPLING_BIT | RD::TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | RD::TEXTURE_USAGE_STORAGE_BIT;
+	out_texture_format.usage_bits = RD::TEXTURE_USAGE_SAMPLING_BIT | RD::TEXTURE_USAGE_COLOR_ATTACHMENT_BIT | RD::TEXTURE_USAGE_STORAGE_BIT | RD::TEXTURE_USAGE_CAN_COPY_TO_BIT;
 
 #ifdef GDEXTENSION
 	Ref<RDTextureView> texture_view;
@@ -507,6 +507,7 @@ Error YUVGPUConverter::_ensure_output_texture() {
 	RD::TextureView texture_view;
 #endif
 	out_texture->set_texture_rd_rid(rd->texture_create(out_texture_format_c, texture_view));
+	rd->texture_clear(out_texture->get_texture_rd_rid(), Color(0, 0, 0, 0), 0, 1, 0, 1);
 
 	if (out_uniform_set.is_valid()) {
 		FREE_RD_RID(out_uniform_set);
