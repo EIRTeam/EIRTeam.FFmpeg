@@ -894,8 +894,7 @@ int VideoDecoder::get_audio_channel_count() const {
 	return 0;
 }
 
-VideoDecoder::VideoDecoder(Ref<FileAccess> p_file) :
-		decoder_commands(true) {
+VideoDecoder::VideoDecoder(Ref<FileAccess> p_file) {
 	video_file = p_file;
 }
 

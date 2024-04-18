@@ -40,7 +40,11 @@ def get_download_url(env):
 
 
 def download_ffmpeg(target, source, env):
-    dst = os.path.dirname(target[0].get_path())
+    dst = ""
+    if isinstance(target[0], str):
+        dst = os.path.dirname(target[0])
+    else:
+        dst = os.path.dirname(target[0].get_path())
     if os.path.exists(dst):
         shutil.rmtree(dst)
 
@@ -63,17 +67,16 @@ def download_ffmpeg(target, source, env):
 
 
 def _ffmpeg_emitter(target, source, env):
-    target += get_ffmpeg_install_sources(env, os.path.dirname(target[0].get_path()))
-    if env["platform"] == "windows":
-        target += [
-            os.path.join(os.path.dirname(target[0].get_path()), f"lib/{lib}.lib")
-            for lib, version in ffmpeg_versions.items()
-        ]
+    dst = ""
+    if isinstance(target[0], str):
+        dst = os.path.dirname(target[0])
     else:
-        target += [
-            os.path.join(os.path.dirname(target[0].get_path()), f"lib/lib{lib}.so")
-            for lib, version in ffmpeg_versions.items()
-        ]
+        dst = os.path.dirname(target[0].get_path())
+    target += get_ffmpeg_install_sources(env, dst)
+    if env["platform"] == "windows":
+        target += [os.path.join(dst, f"lib/{lib}.lib") for lib, version in ffmpeg_versions.items()]
+    else:
+        target += [os.path.join(dst, f"lib/lib{lib}.so") for lib, version in ffmpeg_versions.items()]
 
     emitter_headers = [
         "libavcodec/codec.h",
@@ -85,14 +88,14 @@ def _ffmpeg_emitter(target, source, env):
         "libswscale/swscale.h",
     ]
 
-    target += [os.path.join(os.path.dirname(target[0].get_path()), "include/" + x) for x in emitter_headers]
+    target += [os.path.join(dst, "include/" + x) for x in emitter_headers]
 
     return target, source
 
 
 def ffmpeg_download_builder(env, target, source):
     bkw = {
-        "action": env.Run(download_ffmpeg, subprocess=False),
+        "action": env.Run(download_ffmpeg),
         "target_factory": env.fs.Entry,
         "source_factory": env.fs.Entry,
         "emitter": _ffmpeg_emitter,
