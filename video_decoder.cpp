@@ -425,7 +425,7 @@ void VideoDecoder::_read_decoded_frames(AVFrame *p_received_frame) {
 		if (is_hardware_pixel_format((AVPixelFormat)p_received_frame->format)) {
 			Ref<FFmpegFrame> hw_transfer_frame;
 			if (hw_transfer_frames.size() > 0) {
-				hw_transfer_frame = hw_transfer_frames[0];
+				hw_transfer_frame = hw_transfer_frames.front()->get();
 				hw_transfer_frames.pop_front();
 			}
 
@@ -597,7 +597,7 @@ Ref<FFmpegFrame> VideoDecoder::_ensure_frame_pixel_format(Ref<FFmpegFrame> p_fra
 	Ref<FFmpegFrame> scaler_frame;
 	{
 		if (scaler_frames.size() > 0) {
-			scaler_frame = scaler_frames[0];
+			scaler_frame = scaler_frames.front()->get();
 			scaler_frames.pop_front();
 		}
 	}

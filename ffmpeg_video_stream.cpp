@@ -150,7 +150,7 @@ void FFmpegVideoStreamPlayback::update_internal(double p_delta) {
 		}
 	}
 
-	Ref<DecodedFrame> peek_frame = available_frames.size() > 0 ? available_frames[0] : nullptr;
+	Ref<DecodedFrame> peek_frame = available_frames.size() > 0 ? available_frames.front()->get() : nullptr;
 	bool out_of_sync = false;
 
 	if (peek_frame.is_valid()) {
@@ -171,19 +171,21 @@ void FFmpegVideoStreamPlayback::update_internal(double p_delta) {
 
 	bool got_new_frame = false;
 
-	while (available_frames.size() > 0 && check_next_frame_valid(available_frames[0])) {
+	List<Ref<DecodedFrame>>::Element *next_frame = available_frames.front();
+	while (next_frame && check_next_frame_valid(next_frame->get())) {
 		ZoneNamedN(__frame_receive, "frame_receive", true);
 
 		if (last_frame.is_valid()) {
 			decoder->return_frame(last_frame);
 		}
-		last_frame = available_frames[0];
+		last_frame = next_frame->get();
 		last_frame_image = last_frame->get_image();
 #ifdef FFMPEG_MT_GPU_UPLOAD
 		last_frame_texture = last_frame->get_texture();
 #endif
 		available_frames.pop_front();
 		got_new_frame = true;
+		next_frame = next_frame->next();
 	}
 #ifndef FFMPEG_MT_GPU_UPLOAD
 	if (got_new_frame) {
@@ -222,7 +224,7 @@ void FFmpegVideoStreamPlayback::update_internal(double p_delta) {
 
 	Ref<DecodedAudioFrame> peek_audio_frame;
 	if (available_audio_frames.size() > 0) {
-		peek_audio_frame = available_audio_frames[0];
+		peek_audio_frame = available_audio_frames.front()->get();
 	}
 
 	bool audio_out_of_sync = false;
@@ -240,15 +242,17 @@ void FFmpegVideoStreamPlayback::update_internal(double p_delta) {
 		// TODO: seek audio stream individually if it desyncs
 	}
 
-	while (available_audio_frames.size() > 0 && check_next_audio_frame_valid(available_audio_frames[0])) {
+	List<Ref<DecodedAudioFrame>>::Element *next_audio_frame = available_audio_frames.front();
+	while (next_audio_frame && check_next_audio_frame_valid(next_audio_frame->get())) {
 		ZoneNamedN(__audio_mix, "Audio mix", true);
-		Ref<DecodedAudioFrame> audio_frame = available_audio_frames[0];
+		Ref<DecodedAudioFrame> audio_frame = next_frame->get();
 		int sample_count = audio_frame->get_sample_data().size() / decoder->get_audio_channel_count();
 #ifdef GDEXTENSION
 		mix_audio(sample_count, audio_frame->get_sample_data(), 0);
 #else
 		mix_callback(mix_udata, audio_frame->get_sample_data().ptr(), sample_count);
 #endif
+		next_audio_frame = next_audio_frame->next();
 		available_audio_frames.pop_front();
 	}
 	if (available_audio_frames.size() == 0) {
