@@ -183,9 +183,9 @@ void FFmpegVideoStreamPlayback::update_internal(double p_delta) {
 #ifdef FFMPEG_MT_GPU_UPLOAD
 		last_frame_texture = last_frame->get_texture();
 #endif
-		available_frames.pop_front();
 		got_new_frame = true;
 		next_frame = next_frame->next();
+		available_frames.pop_front();
 	}
 #ifndef FFMPEG_MT_GPU_UPLOAD
 	if (got_new_frame) {
