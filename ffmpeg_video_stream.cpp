@@ -245,7 +245,7 @@ void FFmpegVideoStreamPlayback::update_internal(double p_delta) {
 	List<Ref<DecodedAudioFrame>>::Element *next_audio_frame = available_audio_frames.front();
 	while (next_audio_frame && check_next_audio_frame_valid(next_audio_frame->get())) {
 		ZoneNamedN(__audio_mix, "Audio mix", true);
-		Ref<DecodedAudioFrame> audio_frame = next_frame->get();
+		Ref<DecodedAudioFrame> audio_frame = next_audio_frame->get();
 		int sample_count = audio_frame->get_sample_data().size() / decoder->get_audio_channel_count();
 #ifdef GDEXTENSION
 		mix_audio(sample_count, audio_frame->get_sample_data(), 0);
