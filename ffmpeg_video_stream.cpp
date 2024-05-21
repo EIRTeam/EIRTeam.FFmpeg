@@ -172,8 +172,10 @@ void FFmpegVideoStreamPlayback::update_internal(double p_delta) {
 	bool got_new_frame = false;
 
 	List<Ref<DecodedFrame>>::Element *next_frame = available_frames.front();
-	while (next_frame && check_next_frame_valid(next_frame->get())) {
+	while (next_frame && (check_next_frame_valid(next_frame->get()) || just_seeked)) {
 		ZoneNamedN(__frame_receive, "frame_receive", true);
+
+		just_seeked = false;
 
 		if (last_frame.is_valid()) {
 			decoder->return_frame(last_frame);
@@ -311,6 +313,7 @@ void FFmpegVideoStreamPlayback::play_internal() {
 	clear();
 	playback_position = 0;
 	decoder->seek(0, true);
+	just_seeked = true;
 	playing = true;
 }
 
@@ -319,12 +322,14 @@ void FFmpegVideoStreamPlayback::stop_internal() {
 		clear();
 		playback_position = 0.0f;
 		decoder->seek(playback_position, true);
+		just_seeked = true;
 	}
 	playing = false;
 }
 
 void FFmpegVideoStreamPlayback::seek_internal(double p_time) {
 	decoder->seek(p_time * 1000.0f);
+	just_seeked = true;
 	available_frames.clear();
 	available_audio_frames.clear();
 	playback_position = p_time * 1000.0f;

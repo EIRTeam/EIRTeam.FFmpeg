@@ -109,6 +109,7 @@ class FFmpegVideoStreamPlayback : public VideoStreamPlayback {
 	bool check_next_audio_frame_valid(Ref<DecodedAudioFrame> p_decoded_frame);
 	bool paused = false;
 	bool playing = false;
+	bool just_seeked = false;
 
 	Ref<YUVGPUConverter> yuv_converter;
 
