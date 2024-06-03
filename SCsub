@@ -14,20 +14,16 @@ if env["platform"] == "linuxbsd":
 
 env_ffmpeg = env.Clone()
 
-FFMPEG_DUMMY = "thirdparty/ffmpeg/LICENSE.txt"
-
-ffmpeg_download_action = ffmpeg_download.ffmpeg_download_builder(
-    env_ffmpeg, FFMPEG_DUMMY, "gdextension_build/ffmpeg_download.py"
-)
-
 module_obj = []
 
 excluded = []
 
 sources = [x for x in Glob("*.cpp") if str(x) not in excluded]
 
-env_ffmpeg.Prepend(CPPPATH="thirdparty/ffmpeg/include")
-env.Append(LIBPATH=["#modules/ffmpeg/thirdparty/ffmpeg/lib"])
+ffmpeg_path = env["ffmpeg_path"]
+
+env_ffmpeg.Prepend(CPPPATH=f"{ffmpeg_path}/include")
+env.Append(LIBPATH=[f"{ffmpeg_path}/lib"])
 
 ffmpeg_libs = ["avcodec", "avfilter", "avformat", "avutil", "swresample", "swscale"]
 
@@ -38,8 +34,7 @@ else:
     # mingw
     env.Append(LIBS=ffmpeg_libs)
 
-ffmpeg_install_action = ffmpeg_download.ffmpeg_install(env_ffmpeg, "#bin", "thirdparty/ffmpeg")
-env_ffmpeg.Depends(sources, ffmpeg_install_action)
+ffmpeg_install_action = ffmpeg_download.ffmpeg_install(env_ffmpeg, "#bin", ffmpeg_path)
 
 env_ffmpeg.GLSL_HEADER("yuv_to_rgb.glsl")
 env_ffmpeg.Depends(Glob("*.glsl.gen.h"), ["#glsl_builders.py"])

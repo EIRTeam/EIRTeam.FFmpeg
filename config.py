@@ -6,7 +6,16 @@ def can_build(env, platform):
 
 
 def configure(env):
-    pass
+    if not "ffmpeg_path" in env or not env["ffmpeg_path"]:
+        raise RuntimeError("ffmpeg path not found")
+
+
+def get_opts(platform):
+    from SCons.Variables import BoolVariable
+
+    return [
+        ("ffmpeg_path", "FFmpeg path", ""),
+    ]
 
 
 def get_doc_path():
