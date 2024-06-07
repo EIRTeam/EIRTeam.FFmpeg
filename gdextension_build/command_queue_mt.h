@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef ET_COMMAND_QUEUE_MT_H
-#define ET_COMMAND_QUEUE_MT_H
+#ifndef COMMAND_QUEUE_MT_H
+#define COMMAND_QUEUE_MT_H
 
 #ifdef GDEXTENSION
 
@@ -418,7 +418,7 @@ public:
 		_flush();
 	}
 
-	CommandQueueMT(bool p_sync);
+	CommandQueueMT();
 	~CommandQueueMT();
 };
 
@@ -440,4 +440,4 @@ public:
 
 #endif
 
-#endif // ET_COMMAND_QUEUE_MT_H
+#endif // COMMAND_QUEUE_MT_H

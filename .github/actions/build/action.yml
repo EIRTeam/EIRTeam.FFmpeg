@@ -7,6 +7,8 @@ inputs:
   tests:
     description: Unit tests.
     default: false
+  ffmpeg-path:
+    description: Path to ffmpeg
   platform:
     description: Target platform.
     required: false
@@ -29,8 +31,9 @@ runs:
           SCONSFLAGS: ${{ inputs.sconsflags }}
           SCONS_CACHE: ${{ inputs.scons-cache }}
           SCONS_CACHE_LIMIT: ${{ inputs.scons-cache-limit }}
+          FFMPEG_PATH: ${{ inputs.ffmpeg-path }}
       run: |
         cd gdextension_build
-        echo "Building with flags:" platform=${{ inputs.platform }} target=${{ inputs.target }} ${{ env.SCONSFLAGS }}
-        scons platform=${{ inputs.platform }} target=${{ inputs.target }} ${{ env.SCONSFLAGS }}
+        echo "Building with flags:" platform=${{ inputs.platform }} target=${{ inputs.target }} ffmpeg_path=${{ env.FFMPEG_PATH }} ${{ env.SCONSFLAGS }}
+        scons platform=${{ inputs.platform }} target=${{ inputs.target }} ffmpeg_path=${{ env.FFMPEG_PATH }} ${{ env.SCONSFLAGS }}
         ls -l build/addons/ffmpeg/

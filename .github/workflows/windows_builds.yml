@@ -42,10 +42,24 @@ jobs:
       - name: Setup MSVC problem matcher
         uses: ammaraskar/msvc-problem-matcher@master
 
+      - uses: suisei-cn/actions-download-file@v1
+        id: downloadfile
+        name: Download the file
+        with:
+          url: "https://github.com/EIRTeam/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-lgpl-godot.tar.xz"
+          target: .
+
+      - name: Extract tgz
+        uses: ihiroky/extract-action@v1
+        with:
+          file_path: ffmpeg-master-latest-win64-lgpl-godot.tar.xz
+          extract_dir: .
+
       - name: Compilation
         uses: ./.github/actions/build
         with:
           sconsflags: ${{ env.SCONSFLAGS }} ${{ matrix.sconsflags }}
+          ffmpeg-path: "../ffmpeg-master-latest-win64-lgpl-godot/"
           platform: windows
           target: ${{ matrix.target }}
           tests: ${{ matrix.tests }}

@@ -55,8 +55,12 @@ else:
 
 opts = Variables([], ARGUMENTS)
 opts.Add(BoolVariable("verbose", "Enable verbose output for the compilation", False))
+opts.Add(("ffmpeg_path", "Path to FFmpeg", ""))
 
 opts.Update(env)
+
+if not "ffmpeg_path" in env or not env["ffmpeg_path"]:
+    raise RuntimeError("ffmpeg path not found")
 
 if not env["verbose"]:
     methods.no_verbose(sys, env)
@@ -65,12 +69,13 @@ env.Append(CPPDEFINES=["GDEXTENSION"])
 env.Append(CPPPATH=["../"])
 sources = Glob("../*.cpp")
 sources.extend(Glob("*.cpp"))
+ffmpeg_path = env["ffmpeg_path"]
 
-env.Prepend(CPPPATH="../thirdparty/ffmpeg/include")
-env.Append(LIBPATH="../thirdparty/ffmpeg/lib")
 ffmpeg_libs = ["avcodec", "avfilter", "avformat", "avutil", "swresample", "swscale"]
 
 env.Append(LIBS=ffmpeg_libs)
+env.Prepend(CPPPATH=f"{ffmpeg_path}/include")
+env.Append(LIBPATH=[f"{ffmpeg_path}/lib"])
 
 if env["platform"] == "windows" and sys.platform == "win32" and not env.get("is_msvc", False):
     # Workaround for https://github.com/godotengine/godot-cpp/issues/1064
@@ -100,13 +105,9 @@ else:
         source=sources,
     )
 
-FFMPEG_DUMMY = "../thirdparty/ffmpeg/LICENSE.txt"
-ffmpeg_download_action = ffmpeg_download.ffmpeg_download_builder(env, FFMPEG_DUMMY, "ffmpeg_download.py")
-ffmpeg_install_action = ffmpeg_download.ffmpeg_install(env, f"#{addon_platform_dir}", "../thirdparty/ffmpeg")
+ffmpeg_install_action = ffmpeg_download.ffmpeg_install(env, f"#{addon_platform_dir}", ffmpeg_path)
 env.Depends(sources, env.Install(addon_base_dir, "ffmpeg.gdextension"))
-license_install_action = env.InstallAs(f"{addon_base_dir}LICENSE-ffmpeg.txt", FFMPEG_DUMMY)
 env.Depends(sources, ffmpeg_install_action)
-env.Depends(sources, license_install_action)
 
 env.GLSL_HEADER("../yuv_to_rgb.glsl")
 env.Depends(Glob("../*.glsl.gen.h"), ["#glsl_builders.py"])

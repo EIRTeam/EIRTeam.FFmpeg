@@ -35,6 +35,11 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Download ffmpeg
+        run: |
+          wget https://github.com/EIRTeam/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-lgpl-godot.tar.xz
+          tar xvf ffmpeg-master-latest-linux64-lgpl-godot.tar.xz
+
       - name: Setup python and scons
         uses: ./.github/actions/deps
 
@@ -42,6 +47,7 @@ jobs:
         uses: ./.github/actions/build
         with:
           sconsflags: ${{ env.SCONSFLAGS }} ${{ matrix.sconsflags }}
+          ffmpeg-path: "../ffmpeg-master-latest-linux64-lgpl-godot/"
           platform: linux
           target: ${{ matrix.target }}
           tests: ${{ matrix.tests }}
