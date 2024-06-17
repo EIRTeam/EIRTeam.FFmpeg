@@ -16,6 +16,7 @@ SCONS_FLAGS=${6:-"debug_symbols=no"}
 SCONS_CACHE_DIR="scons-cache"
 SCONS_CACHE_LIMIT="7168"
 BUILD_DIR="gdextension_build"
+OUTPUT_DIR="${BUILD_DIR}/build"
 
 setup() {
     echo "Setting up to build for ${TARGET} with SCons ${SCONS_VERSION}"
@@ -75,6 +76,7 @@ cleanup() {
     # Remove the ffmpeg tarball
     rm -f ffmpeg.tar.xz
     echo "Cleanup complete."
+    echo "The built addons folder is located at '${OUTPUT_DIR}'."
 }
 
 setup
