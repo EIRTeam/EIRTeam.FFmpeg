@@ -7,9 +7,9 @@ set -e
 TARGET=${1:-"all"}
 PLATFORM=${2:-"linux"}
 SCONS_VERSION=${3:-"4.4.0"}
-FFMPEG_URL=${4:-"https://github.com/EIRTeam/FFmpeg-Builds/releases/download/\
-latest/ffmpeg-master-latest-linux64-lgpl-godot.tar.xz"}
-FFMPEG_RELATIVE_PATH=${5:-"ffmpeg-master-latest-linux64-lgpl-godot"}
+FFMPEG_RELATIVE_PATH=${4:-"ffmpeg-master-latest-linux64-lgpl-godot"}
+FFMPEG_URL=${5:-"https://github.com/EIRTeam/FFmpeg-Builds/releases/download/\
+latest/${FFMPEG_RELATIVE_PATH}.tar.xz"}
 SCONS_FLAGS=${6:-"debug_symbols=no"}
 
 # Fixed variables
