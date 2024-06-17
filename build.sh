@@ -8,9 +8,10 @@ TARGET=${1:-"all"}
 PLATFORM=${2:-"linux"}
 SCONS_VERSION=${3:-"4.4.0"}
 FFMPEG_RELATIVE_PATH=${4:-"ffmpeg-master-latest-linux64-lgpl-godot"}
-FFMPEG_URL=${5:-"https://github.com/EIRTeam/FFmpeg-Builds/releases/download/\
-latest/${FFMPEG_RELATIVE_PATH}.tar.xz"}
-SCONS_FLAGS=${6:-"debug_symbols=no"}
+FFMPEG_URL_OR_PATH=${5:-"https://github.com/EIRTeam/FFmpeg-Builds/releases/\
+download/latest/${FFMPEG_RELATIVE_PATH}.tar.xz"}
+FFMPEG_TARBALL_PATH=${6:-"ffmpeg.tar.xz"}
+SCONS_FLAGS=${7:-"debug_symbols=no"}
 
 # Fixed variables
 SCONS_CACHE_DIR="scons-cache"
@@ -18,15 +19,44 @@ SCONS_CACHE_LIMIT="7168"
 BUILD_DIR="gdextension_build"
 OUTPUT_DIR="${BUILD_DIR}/build"
 
+can_copy() {
+    if [[ ! -f $1 ]]; then
+        return 0
+    fi
+
+    if [[ ! -f $2 ]]; then
+        return 1
+    fi
+
+    local src_inode=$(stat -c %i $1)
+    local dest_inode=$(stat -c %i $2)
+    if [[ $src_inode -eq $dest_inode ]]; then
+        return 1
+    fi
+}
+
 setup() {
     echo "Setting up to build for ${TARGET} with SCons ${SCONS_VERSION}"
 
-    echo "Setting up FFmpeg. Source: ${FFMPEG_URL}"
-    # Download FFmpeg
-    wget -q --show-progress -O ffmpeg.tar.xz ${FFMPEG_URL}
+    echo "Setting up FFmpeg. Source: ${FFMPEG_URL_OR_PATH}"
+    if [[ -f ${FFMPEG_URL_OR_PATH} ]]; then
+        if \
+            [[ -f ${FFMPEG_TARBALL_PATH} ]] && \
+            can_copy ${FFMPEG_URL_OR_PATH} ${FFMPEG_TARBALL_PATH}
+        then
+            echo "Copying FFmpeg from local path..."
+            cp ${FFMPEG_URL_OR_PATH} ${FFMPEG_TARBALL_PATH}
+        else
+            echo "Given source is the same as the target. Skipping copy."
+        fi
+    else
+        echo "Downloading FFmpeg..."
+        # Download FFmpeg
+        wget -q --show-progress -O ${FFMPEG_TARBALL_PATH} ${FFMPEG_URL_OR_PATH}
+    fi
     # Extract FFmpeg
-    tar -xf ffmpeg.tar.xz
-    echo "FFmpeg downloaded and extracted."
+    tar -xf ${FFMPEG_TARBALL_PATH}
+    echo "FFmpeg extracted."
 
     # Ensure submodules are up to date
     git submodule update --init --recursive
