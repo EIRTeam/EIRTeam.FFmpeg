@@ -7,7 +7,8 @@ set -e
 TARGET=${1:-"all"}
 PLATFORM=${2:-"linux"}
 SCONS_VERSION=${3:-"4.4.0"}
-FFMPEG_URL=${4:-"https://github.com/EIRTeam/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-lgpl-godot.tar.xz"}
+FFMPEG_URL=${4:-"https://github.com/EIRTeam/FFmpeg-Builds/releases/download/\
+latest/ffmpeg-master-latest-linux64-lgpl-godot.tar.xz"}
 FFMPEG_RELATIVE_PATH=${5:-"ffmpeg-master-latest-linux64-lgpl-godot"}
 SCONS_FLAGS=${6:-"debug_symbols=no"}
 SETUP=${7:-"true"}
@@ -47,7 +48,14 @@ fi
 
 if [ "${TARGET}" == "all" ]; then
     for target in "editor" "template_release" "template_debug"; do
-        ${0} ${target} ${PLATFORM} ${SCONS_VERSION} ${FFMPEG_URL} ${FFMPEG_RELATIVE_PATH} ${SCONS_FLAGS} "false"
+        ${0} \
+        ${target} \
+        ${PLATFORM} \
+        ${SCONS_VERSION} \
+        ${FFMPEG_URL} \
+        ${FFMPEG_RELATIVE_PATH} \
+        ${SCONS_FLAGS} \
+        "false"
     done
     exit 0
 fi
