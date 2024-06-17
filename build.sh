@@ -11,15 +11,13 @@ FFMPEG_URL=${4:-"https://github.com/EIRTeam/FFmpeg-Builds/releases/download/\
 latest/ffmpeg-master-latest-linux64-lgpl-godot.tar.xz"}
 FFMPEG_RELATIVE_PATH=${5:-"ffmpeg-master-latest-linux64-lgpl-godot"}
 SCONS_FLAGS=${6:-"debug_symbols=no"}
-SETUP=${7:-"true"}
 
 # Fixed variables
 SCONS_CACHE_DIR="scons-cache"
 SCONS_CACHE_LIMIT="7168"
 BUILD_DIR="gdextension_build"
 
-if [ "${SETUP}" == "true" ]; then
-
+setup() {
     echo "Setting up to build for ${TARGET} with SCons ${SCONS_VERSION}"
 
     echo "Setting up FFmpeg. Source: ${FFMPEG_URL}"
@@ -44,44 +42,53 @@ if [ "${SETUP}" == "true" ]; then
     # potentially from a different instance of the script (if TARGET is "all")
     deactivate
     echo "SCons $(scons --version) installed."
-fi
+
+    echo "Setup complete."
+}
+
+build() {
+    TARGET=${1:-"editor"}
+    echo "Building ${TARGET}..."
+    # Setup environment variables
+    export SCONS_FLAGS="${SCONS_FLAGS}"
+    export SCONS_CACHE="${SCONS_CACHE_DIR}"
+    export SCONS_CACHE_LIMIT="${SCONS_CACHE_LIMIT}"
+    export FFMPEG_PATH="${PWD}/${FFMPEG_RELATIVE_PATH}"
+
+    # Enter virtual environment
+    source venv/bin/activate
+    # Enter build directory
+    pushd ${BUILD_DIR}
+    # Build
+    scons platform=linux target=${TARGET} ffmpeg_path=${FFMPEG_PATH} ${SCONS_FLAGS}
+    # Show build results
+    ls -R build/addons/ffmpeg
+
+    # Exit build directory
+    popd
+    # Exit virtual environment
+    deactivate
+}
+
+cleanup() {
+    echo "Cleaning up..."
+    # Remove the ffmpeg tarball
+    rm -f ffmpeg.tar.xz
+    echo "Cleanup complete."
+}
+
+setup
 
 if [ "${TARGET}" == "all" ]; then
     for target in "editor" "template_release" "template_debug"; do
-        ${0} \
-        ${target} \
-        ${PLATFORM} \
-        ${SCONS_VERSION} \
-        ${FFMPEG_URL} \
-        ${FFMPEG_RELATIVE_PATH} \
-        ${SCONS_FLAGS} \
-        "false"
+        build ${target}
     done
+    echo "Builds completed."
+    cleanup
     exit 0
+else
+    build ${TARGET}
+    echo "${TARGET} build completed."
+    cleanup
 fi
 
-
-echo "Building ${TARGET}..."
-# Setup environment variables
-export SCONS_FLAGS="${SCONS_FLAGS}"
-export SCONS_CACHE="${SCONS_CACHE_DIR}"
-export SCONS_CACHE_LIMIT="${SCONS_CACHE_LIMIT}"
-export FFMPEG_PATH="${PWD}/${FFMPEG_RELATIVE_PATH}"
-
-# Enter virtual environment
-source venv/bin/activate
-# Enter build directory
-pushd ${BUILD_DIR}
-# Build
-scons platform=linux target=${TARGET} ffmpeg_path=${FFMPEG_PATH} ${SCONS_FLAGS}
-# Show build results
-ls -R build/addons/ffmpeg
-
-echo "Build completed. Cleaning up..."
-
-# Exit build directory
-popd
-# Exit virtual environment
-deactivate
-# Remove the ffmpeg tarball
-rm ffmpeg.tar.xz
