@@ -61,7 +61,10 @@ build() {
     # Enter build directory
     pushd ${BUILD_DIR}
     # Build
-    scons platform=linux target=${TARGET} ffmpeg_path=${FFMPEG_PATH} ${SCONS_FLAGS}
+    scons \
+        platform=linux target=${TARGET} \
+        ffmpeg_path=${FFMPEG_PATH} \
+        ${SCONS_FLAGS}
     # Show build results
     ls -R build/addons/ffmpeg
 
