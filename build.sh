@@ -11,7 +11,8 @@ FFMPEG_RELATIVE_PATH=${4:-"ffmpeg-master-latest-linux64-lgpl-godot"}
 FFMPEG_URL_OR_PATH=${5:-"https://github.com/EIRTeam/FFmpeg-Builds/releases/\
 download/latest/${FFMPEG_RELATIVE_PATH}.tar.xz"}
 FFMPEG_TARBALL_PATH=${6:-"ffmpeg.tar.xz"}
-SCONS_FLAGS=${7:-"debug_symbols=no"}
+SKIP_FFMPEG_IMPORT=${7:-"false"}
+SCONS_FLAGS=${8:-"debug_symbols=no"}
 
 # Fixed variables
 SCONS_CACHE_DIR="scons-cache"
@@ -38,25 +39,27 @@ can_copy() {
 setup() {
     echo "Setting up to build for ${TARGET} with SCons ${SCONS_VERSION}"
 
-    echo "Setting up FFmpeg. Source: ${FFMPEG_URL_OR_PATH}"
-    if [[ -f ${FFMPEG_URL_OR_PATH} ]]; then
-        if \
-            [[ -f ${FFMPEG_TARBALL_PATH} ]] && \
-            can_copy ${FFMPEG_URL_OR_PATH} ${FFMPEG_TARBALL_PATH}
-        then
-            echo "Copying FFmpeg from local path..."
-            cp ${FFMPEG_URL_OR_PATH} ${FFMPEG_TARBALL_PATH}
+    if [ "${SKIP_FFMPEG_IMPORT}" != "true" ]; then
+        echo "Setting up FFmpeg. Source: ${FFMPEG_URL_OR_PATH}"
+        if [[ -f ${FFMPEG_URL_OR_PATH} ]]; then
+            if \
+                [[ -f ${FFMPEG_TARBALL_PATH} ]] && \
+                can_copy ${FFMPEG_URL_OR_PATH} ${FFMPEG_TARBALL_PATH}
+            then
+                echo "Copying FFmpeg from local path..."
+                cp ${FFMPEG_URL_OR_PATH} ${FFMPEG_TARBALL_PATH}
+            else
+                echo "Given source is the same as the target. Skipping copy."
+            fi
         else
-            echo "Given source is the same as the target. Skipping copy."
+            echo "Downloading FFmpeg..."
+            # Download FFmpeg
+            wget -q --show-progress -O ${FFMPEG_TARBALL_PATH} ${FFMPEG_URL_OR_PATH}
         fi
-    else
-        echo "Downloading FFmpeg..."
-        # Download FFmpeg
-        wget -q --show-progress -O ${FFMPEG_TARBALL_PATH} ${FFMPEG_URL_OR_PATH}
+        # Extract FFmpeg
+        tar -xf ${FFMPEG_TARBALL_PATH}
+        echo "FFmpeg extracted."
     fi
-    # Extract FFmpeg
-    tar -xf ${FFMPEG_TARBALL_PATH}
-    echo "FFmpeg extracted."
 
     # Ensure submodules are up to date
     git submodule update --init --recursive
