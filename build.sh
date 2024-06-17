@@ -32,7 +32,7 @@ if [ "${SETUP}" == "true" ]; then
     git submodule update --init --recursive
 
     echo "Setting up SCons"
-    # Setup virtual environment
+    # Set up virtual environment
     python -m venv venv
     source venv/bin/activate
     # Upgrade pip
