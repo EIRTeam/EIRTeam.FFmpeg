@@ -381,3 +381,5 @@ $RECYCLE.BIN/
 *.msm
 *.msp
 *.lnk
+/ffmpeg-master-latest-linux64-lgpl-godot
+/gdextension_build/scons-cache
