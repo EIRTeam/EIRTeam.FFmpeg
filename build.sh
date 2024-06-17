@@ -39,6 +39,9 @@ if [ "${SETUP}" == "true" ]; then
     pip install --upgrade pip
     # Install SCons
     pip install scons==${SCONS_VERSION}
+    # Exit virtual environment, as it will be re-entered later,
+    # potentially from a different instance of the script (if TARGET is "all")
+    deactivate
     echo "SCons $(scons --version) installed."
 fi
 
@@ -57,6 +60,8 @@ export SCONS_CACHE="${SCONS_CACHE_DIR}"
 export SCONS_CACHE_LIMIT="${SCONS_CACHE_LIMIT}"
 export FFMPEG_PATH="${PWD}/${FFMPEG_RELATIVE_PATH}"
 
+# Enter virtual environment
+source venv/bin/activate
 # Enter build directory
 pushd ${BUILD_DIR}
 # Build
