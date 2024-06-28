@@ -1,3 +1,6 @@
 [submodule "gdextension_build/godot-cpp"]
 	path = gdextension_build/godot-cpp
 	url = https://github.com/godotengine/godot-cpp.git
+[submodule "ffmpeg-kit"]
+	path = ffmpeg-kit
+	url = https://github.com/arthenica/ffmpeg-kit

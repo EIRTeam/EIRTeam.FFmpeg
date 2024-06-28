@@ -79,8 +79,8 @@ def disable_warnings(self):
 
 
 def write_macos_plist(target, binary_name, identifier, name):
-    os.makedirs(f"{target}/Resourece/", exist_ok=True)
-    f = open(f"{target}/Resourece/Info.plist", "w")
+    os.makedirs(f"{target}/Resources/", exist_ok=True)
+    f = open(f"{target}/Resources/Info.plist", "w")
 
     f.write(f'<?xml version="1.0" encoding="UTF-8"?>\n')
     f.write(f'<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n')
@@ -195,3 +195,21 @@ def get_soname(filename):
         return result.group(1)
     else:
         return ""
+
+def osx_rename_libname(pattern, replacement, tool_prefix, filenames):
+    otool = tool_prefix + 'otool'
+    install_name_tool = tool_prefix + 'install_name_tool'
+    for filename in filenames:
+        data = str(subprocess.check_output([otool, '-L', filename]).decode('utf-8')).strip()
+        val = map(lambda x: x[0], map(str.split, map(str.strip, data.strip().split('\n'))))
+        val = list(val)[2:]
+
+        to_change = {}
+        for path in val:
+            if re.findall(pattern, path):
+                new_path = re.sub(pattern, replacement, path)
+                to_change[path] = new_path if new_path.endswith('.dylib') else new_path + '.dylib'
+
+        for k,v in to_change.items():
+            print(k, v, sep=' -> ')
+            subprocess.call([install_name_tool, '-change', k, v, filename])
