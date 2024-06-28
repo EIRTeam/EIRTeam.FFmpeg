@@ -547,7 +547,7 @@ RID YUVGPUConverter::_create_uniform_set(const RID &p_texture_rd_rid) {
 
 void YUVGPUConverter::_upload_plane_images() {
 	for (size_t i = 0; i < std::size(yuv_plane_images); i++) {
-		ERR_CONTINUE_MSG(!yuv_plane_images[i].is_valid(), vformat("YUV plane %d was missing, cannot upload texture data.", i));
+		ERR_CONTINUE_MSG(!yuv_plane_images[i].is_valid(), vformat("YUV plane %d was missing, cannot upload texture data.", (int)i));
 		RS::get_singleton()->get_rendering_device()->texture_update(yuv_plane_textures[i], 0, yuv_plane_images[i]->get_data());
 	}
 }

@@ -8,6 +8,10 @@ windows.debug.x86_64 = "res://addons/ffmpeg/win64/libgdffmpeg.windows.template_d
 windows.release.x86_64 = "res://addons/ffmpeg/win64/libgdffmpeg.windows.template_release.x86_64.dll"
 linux.debug.x86_64 = "res://addons/ffmpeg/linux64/libgdffmpeg.linux.template_debug.x86_64.so"
 linux.release.x86_64 = "res://addons/ffmpeg/linux64/libgdffmpeg.linux.template_release.x86_64.so"
+android.debug.arm64 = "res://addons/ffmpeg/android/libgdffmpeg.android.template_debug.arm64.so"
+android.release.arm64 = "res://addons/ffmpeg/android/libgdffmpeg.android.template_release.arm64.so"
+macos.debug = "res://addons/ffmpeg/macos/libgdffmpeg.macos.template_debug.framework"
+macos.release = "res://addons/ffmpeg/macos/libgdffmpeg.macos.template_release.framework"
 
 [dependencies]
 
@@ -26,3 +30,23 @@ linux.x86_64 =
     "res://addons/ffmpeg/linux64/libavutil.so.58": "",
     "res://addons/ffmpeg/linux64/libswresample.so.4": "",
     "res://addons/ffmpeg/linux64/libswscale.so.7": ""}
+
+android.arm64 =
+    {
+        "res://addons/ffmpeg/android/libavcodec.so": "",
+        "res://addons/ffmpeg/android/libavfilter.so": "",
+        "res://addons/ffmpeg/android/libavformat.so": "",
+        "res://addons/ffmpeg/android/libavutil.so": "",
+        "res://addons/ffmpeg/android/libswresample.so": "",
+        "res://addons/ffmpeg/android/libswscale.so": ""
+    }
+
+macos =
+    {
+        "res://addons/ffmpeg/macos/libavcodec.dylib": "",
+        "res://addons/ffmpeg/macos/libavfilter.dylib": "",
+        "res://addons/ffmpeg/macos/libavformat.dylib": "",
+        "res://addons/ffmpeg/macos/libavutil.dylib": "",
+        "res://addons/ffmpeg/macos/libswresample.dylib": "",
+        "res://addons/ffmpeg/macos/libswscale.dylib": ""
+    }
