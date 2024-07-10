@@ -15,22 +15,47 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  android-build-debug:
-    name: 🐧 Android Debug
-    uses: ./.github/workflows/android_builds.yml
+  windows-build-debug:
+    name: 🏁 Windows Debug
+    uses: ./.github/workflows/windows_builds.yml
     with:
       target: template_debug
-  android-build-release:
-    name: 🐧 Android Release
+  windows-build-release:
+    name: 🏁 Windows Release
+    uses: ./.github/workflows/windows_builds.yml
+    with:
+      target: template_release
+
+  linux-build-debug:
+    name: 🐧 Linux Debug
+    uses: ./.github/workflows/linux_builds.yml
+    with:
+      target: template_debug
+  linux-build-release:
+    name: 🐧 Linux Release
+    uses: ./.github/workflows/linux_builds.yml
+    with:
+      target: template_release
+
+  android-build-debug-arm64:
+    name: 🤖 Android Debug (arm64-v8a)
+    uses: ./.github/workflows/android_builds.yml
+    with:
+      target: template_debug 
+  android-build-release-arm64:
+    name: 🤖 Android Release (arm64-v8a)
     uses: ./.github/workflows/android_builds.yml
     with:
       target: template_release
+    
+
   static-checks:
     name: 📊 Static checks
     uses: ./.github/workflows/static_checks.yml
+
   publish_release:
     name: Publish release
-    needs: [android-build-release, android-build-debug]
+    needs: [windows-build-debug, windows-build-release, linux-build-debug, linux-build-release, android-build-debug-arm64, android-build-release-arm64]
     runs-on: ubuntu-latest
     if: github.event.inputs.doRelease
     steps:
