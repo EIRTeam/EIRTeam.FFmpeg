@@ -5,6 +5,10 @@ on:
       target:
         required: true
         type: string
+      platform:
+        required: false
+        default: linux
+        type: string
 
 # Global Settings
 # SCONS_CACHE for windows must be set in the build environment
@@ -27,6 +31,7 @@ jobs:
         include:
           - name: Linux build - ${{ inputs.target }}
             cache-name: Linux
+            platform: ${{ inputs.platform }}
             target: ${{ inputs.target }}
             # Skip debug symbols, they're way too big with MSVC.
             sconsflags: debug_symbols=no
@@ -48,7 +53,7 @@ jobs:
         with:
           sconsflags: ${{ env.SCONSFLAGS }} ${{ matrix.sconsflags }}
           ffmpeg-path: "../ffmpeg-master-latest-linux64-lgpl-godot/"
-          platform: linux
+          platform: ${{ matrix.platform }}
           target: ${{ matrix.target }}
           tests: ${{ matrix.tests }}
       - name: Upload artifact

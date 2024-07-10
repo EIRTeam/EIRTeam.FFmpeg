@@ -35,12 +35,24 @@ jobs:
     uses: ./.github/workflows/linux_builds.yml
     with:
       target: template_release
+  linux-android-build-debug:
+    name: 🤖 Linux Andoid Debug
+    uses: ./.github/workflows/linux_builds.yml
+    with:
+      target: template_debug
+      platform: android
+  linux-android-build-release:
+    name: 🤖 Linux Andoid Release
+    uses: ./.github/workflows/linux_builds.yml
+    with:
+      target: template_release
+      platform: android
   static-checks:
     name: 📊 Static checks
     uses: ./.github/workflows/static_checks.yml
   publish_release:
     name: Publish release
-    needs: [windows-build-debug, windows-build-release, linux-build-release, linux-build-debug]
+    needs: [windows-build-debug, windows-build-release, linux-build-release, linux-build-debug, linux-build-release, linux-build-debug]
     runs-on: ubuntu-latest
     if: github.event.inputs.doRelease
     steps:
