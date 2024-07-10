@@ -81,6 +81,7 @@ jobs:
           PLATFORM: android
           TARGET_ARCH: ${{ matrix.target_arch }}
         run: |
+          make bootstrap
           make ffmpeg
 
       - name: Compilation
