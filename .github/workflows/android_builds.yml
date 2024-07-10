@@ -23,7 +23,7 @@ env:
 
 concurrency:
   cancel-in-progress: true
-  group: ci-${{github.actor}}-${{github.head_ref || github.run_number}}-${{github.ref}}-linux-${{ inputs.target }}
+  group: ci-${{github.actor}}-${{github.head_ref || github.run_number}}-${{github.ref}}-android-${{ inputs.target }}
 
 jobs:
   build-linux:
