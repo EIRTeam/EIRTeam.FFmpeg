@@ -81,7 +81,8 @@ jobs:
           PLATFORM: android
           TARGET_ARCH: ${{ matrix.target_arch }}
         run: |
-          make bootstrap
+          sudo apt update
+          sudo apt install autoconf automake libtool pkg-config curl cmake gperf groff texinfo yasm nasm bison autogen git wget meson ninja-build rapidjson-dev
           make ffmpeg
 
       - name: Compilation
