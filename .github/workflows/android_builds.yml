@@ -1,0 +1,76 @@
+name: 🤖 Android Builds
+on:
+  workflow_call:
+    inputs:
+      target:
+        required: true
+        type: string
+      target_arch:
+        required: false
+        type: string
+        default: arm64-v8a
+      prefix_arch:
+        required: false
+        type: string
+        default: arm64
+
+# Global Settings
+# SCONS_CACHE for windows must be set in the build environment
+env:
+  # Used for the cache key. Add version suffix to force clean build.
+  GODOT_BASE_BRANCH: master
+  SCONS_CACHE_MSVC_CONFIG: true
+
+concurrency:
+  cancel-in-progress: true
+  group: ci-${{github.actor}}-${{github.head_ref || github.run_number}}-${{github.ref}}-linux-${{ inputs.target }}
+
+jobs:
+  build-linux:
+    runs-on: "ubuntu-20.04"
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Android build - ${{ inputs.target }} (${{ inputs.target_arch }})
+            cache-name: Android
+            target: ${{ inputs.target }}
+            prefix_arch: ${{ inputs.prefix_arch }}
+            target_arch: ${{ inputs.target_arch }}
+            # Skip debug symbols, they're way too big with MSVC.
+            sconsflags: debug_symbols=no
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      # - name: Download ffmpeg
+      #   run: |
+      #     wget https://github.com/EIRTeam/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-lgpl-godot.tar.xz
+      #     tar xvf ffmpeg-master-latest-linux64-lgpl-godot.tar.xz
+
+      - name: Setup python and scons
+        uses: ./.github/actions/deps
+
+      - name: Make ffmpeg
+        shell: sh
+        env:
+          PLATFORM: android
+          TARGET_ARCH: ${{ matrix.target_arch }}
+        run: |
+          make ffmpeg
+
+      - name: Compilation
+        uses: ./.github/actions/build
+        with:
+          sconsflags: arch=${{ matrix.prefix_arch }} ${{ env.SCONSFLAGS }} ${{ matrix.sconsflags }}
+          ffmpeg-path: "../thirdparty/ffmpeg/android/${{ matrix.prefix_arch }}"
+          platform: android
+          target: ${{ matrix.target }}
+          tests: ${{ matrix.tests }}
+      - name: Upload artifact
+        uses: ./.github/actions/upload-artifact
+        with:
+          name: artifacts
+          path: ./gdextension_build/build/*
