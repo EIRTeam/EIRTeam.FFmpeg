@@ -50,6 +50,28 @@ jobs:
       #     wget https://github.com/EIRTeam/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-lgpl-godot.tar.xz
       #     tar xvf ffmpeg-master-latest-linux64-lgpl-godot.tar.xz
 
+      - name: (Android) Install JDK 17
+        uses: actions/setup-java@v3
+        with:
+            java-version: 17
+            distribution: temurin
+
+      - name: (Android) Install Android SDK
+        uses: android-actions/setup-android@v3
+
+        # From Godot docs, might not be necessary.
+        #- name: (Android) Install Android Tools
+        #  shell: sh
+        #  run: |
+        #    "$ANDROID_SDK_ROOT"/cmdline-tools/latest/bin/sdkmanager --sdk_root="$ANDROID_SDK_ROOT" "platform-tools" "build-tools;30.0.3" "platforms;android-29" "cmdline-tools;latest" "cmake;3.10.2.4988404"
+
+      - name: (Android) Install NDK r23c
+        uses: nttld/setup-ndk@v1
+        with:
+            ndk-version: r23c
+            link-to-sdk: true
+
+      
       - name: Setup python and scons
         uses: ./.github/actions/deps
 
@@ -69,6 +91,7 @@ jobs:
           platform: android
           target: ${{ matrix.target }}
           tests: ${{ matrix.tests }}
+          
       - name: Upload artifact
         uses: ./.github/actions/upload-artifact
         with:
