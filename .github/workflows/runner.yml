@@ -15,24 +15,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  windows-build-debug:
-    name: 🏁 Windows Debug
-    uses: ./.github/workflows/windows_builds.yml
+  android-build-debug:
+    name: 🐧 Android Debug
+    uses: ./.github/workflows/android_builds.yml
     with:
       target: template_debug
-  windows-build-release:
-    name: 🏁 Windows Release
-    uses: ./.github/workflows/windows_builds.yml
-    with:
-      target: template_release
-  linux-build-debug:
-    name: 🐧 Linux Debug
-    uses: ./.github/workflows/linux_builds.yml
-    with:
-      target: template_debug
-  linux-build-release:
-    name: 🐧 Linux Release
-    uses: ./.github/workflows/linux_builds.yml
+  android-build-release:
+    name: 🐧 Android Release
+    uses: ./.github/workflows/android_builds.yml
     with:
       target: template_release
   static-checks:
@@ -40,7 +30,7 @@ jobs:
     uses: ./.github/workflows/static_checks.yml
   publish_release:
     name: Publish release
-    needs: [windows-build-debug, windows-build-release, linux-build-release, linux-build-debug]
+    needs: [android-build-release, android-build-debug]
     runs-on: ubuntu-latest
     if: github.event.inputs.doRelease
     steps:
