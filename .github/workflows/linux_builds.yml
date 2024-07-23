@@ -1,4 +1,4 @@
-name: 🏁 Windows Builds
+name: 🐧 Linux Builds
 on:
   workflow_call:
     inputs:
