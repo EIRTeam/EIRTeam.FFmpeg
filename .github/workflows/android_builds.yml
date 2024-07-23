@@ -75,14 +75,25 @@ jobs:
       - name: Setup python and scons
         uses: ./.github/actions/deps
 
+      - name: Install deps
+        shell: sh
+        run: |
+          sudo apt update
+          sudo apt install autoconf automake libtool pkg-config curl cmake gperf groff texinfo yasm nasm bison autogen git wget meson ninja-build rapidjson-dev
+      - name: Cache ffmpeg build
+        id: cache-ffmpeg-android
+        uses: actions/cache@v4
+        with:
+          path: thirdparty/ffmpeg
+          key: ${{ runner.os }}-ffmpeg-android-${{ matrix.target_arch }}-${{ hashFiles('./ffmpeg-kit/**') }}
+          
       - name: Make ffmpeg
+        if: steps.cache-ffmpeg-android.outputs.cache-hit != 'true'
         shell: sh
         env:
           PLATFORM: android
           TARGET_ARCH: ${{ matrix.target_arch }}
         run: |
-          sudo apt update
-          sudo apt install autoconf automake libtool pkg-config curl cmake gperf groff texinfo yasm nasm bison autogen git wget meson ninja-build rapidjson-dev
           make ffmpeg
 
       - name: Compilation
