@@ -36,6 +36,8 @@
 
 #ifdef GDEXTENSION
 #include "gdextension_build/gdex_print.h"
+#include <godot_cpp/classes/engine.hpp>
+#include <godot_cpp/variant/builtin_types.hpp>
 #include <godot_cpp/classes/rendering_server.hpp>
 #endif
 
@@ -153,8 +155,10 @@ Error VideoDecoder::recreate_codec_context() {
 	}
 
 	AVCodecParameters codec_params = *video_stream->codecpar;
-	// YUV conversion needs rendering device
-	if (codec_params.format == AVPixelFormat::AV_PIX_FMT_YUV420P && RenderingServer::get_singleton()->get_rendering_device()) {
+	// YUV conversion needs rendering device and Godot 4.3+
+	if (codec_params.format == AVPixelFormat::AV_PIX_FMT_YUV420P &&
+			RenderingServer::get_singleton()->get_rendering_device() &&
+			(uint32_t(Engine::get_singleton()->get_version_info().get("hex", 0x0)) >= 0x040300)) {
 		frame_format = FFmpegFrameFormat::YUV420P;
 	} else {
 		frame_format = FFmpegFrameFormat::RGBA8;
