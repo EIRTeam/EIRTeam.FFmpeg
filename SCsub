@@ -12,6 +12,8 @@ if env["platform"] == "linuxbsd":
     if not "RPATH" in env:
         env.Append(RPATH=env.Literal("\\$$ORIGIN"))
 
+env.Append(LINKFLAGS=["-Wl,--disable-new-dtags"])
+
 env_ffmpeg = env.Clone()
 
 module_obj = []
