@@ -67,14 +67,15 @@ extern "C" {
 
 enum FFmpegFrameFormat {
 	RGBA8,
-	YUV420P
+	YUV420P,
+	YUVA420P,
 };
 
 class DecodedFrame : public RefCounted {
 	double time;
 	Ref<ImageTexture> texture;
 	Ref<Image> image;
-	Ref<Image> yuv_images[3];
+	Ref<Image> yuv_images[4];
 	FFmpegFrameFormat format;
 
 public:
@@ -163,6 +164,7 @@ private:
 	Vector<Ref<DecodedFrame>> decoded_frames;
 	std::thread *thread = nullptr;
 	SafeFlag thread_abort;
+	AVCodec const *forced_video_codec = nullptr;
 
 	bool looping = false;
 
@@ -184,8 +186,9 @@ private:
 	void _scaler_frame_return(Ref<FFmpegFrame> p_hw_frame);
 
 	Ref<FFmpegFrame> _ensure_frame_pixel_format(Ref<FFmpegFrame> p_frame, AVPixelFormat p_target_pixel_format);
-	Ref<DecodedFrame> _unwrap_yuv_frame(double p_frame_time, Ref<FFmpegFrame> p_frame);
+	Ref<DecodedFrame> _unwrap_yuv_frame(double p_frame_time, Ref<FFmpegFrame> p_frame, FFmpegFrameFormat p_out_format);
 	AVFrame *_ensure_frame_audio_format(AVFrame *p_frame, AVSampleFormat p_target_audio_format);
+	String _codec_id_to_libvpx(AVCodecID p_codec_id) const;
 
 public:
 	struct AvailableDecoderInfo {

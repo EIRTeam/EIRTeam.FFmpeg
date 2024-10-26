@@ -192,10 +192,11 @@ void FFmpegVideoStreamPlayback::update_internal(double p_delta) {
 #ifndef FFMPEG_MT_GPU_UPLOAD
 	if (got_new_frame) {
 		// YUV conversion
-		if (last_frame->get_format() == FFmpegFrameFormat::YUV420P) {
+		if (last_frame->get_format() == FFmpegFrameFormat::YUV420P || last_frame->get_format() == FFmpegFrameFormat::YUVA420P) {
 			Ref<Image> y_plane = last_frame->get_yuv_image_plane(0);
 			Ref<Image> u_plane = last_frame->get_yuv_image_plane(1);
 			Ref<Image> v_plane = last_frame->get_yuv_image_plane(2);
+			Ref<Image> a_plane = last_frame->get_yuv_image_plane(3);
 
 			ERR_FAIL_COND(!y_plane.is_valid());
 			ERR_FAIL_COND(!u_plane.is_valid());
@@ -204,6 +205,7 @@ void FFmpegVideoStreamPlayback::update_internal(double p_delta) {
 			yuv_converter->set_plane_image(0, y_plane);
 			yuv_converter->set_plane_image(1, u_plane);
 			yuv_converter->set_plane_image(2, v_plane);
+			yuv_converter->set_plane_image(3, a_plane);
 			yuv_converter->convert();
 			// RGBA texture handling
 		} else if (texture.is_valid()) {
@@ -279,7 +281,7 @@ Error FFmpegVideoStreamPlayback::load(Ref<FileAccess> p_file_access) {
 		return FAILED;
 	}
 
-	if (decoder->get_frame_format() == FFmpegFrameFormat::YUV420P) {
+	if (decoder->get_frame_format() == FFmpegFrameFormat::YUV420P || decoder->get_frame_format() == FFmpegFrameFormat::YUVA420P) {
 		yuv_converter.instantiate();
 		yuv_converter->set_frame_size(size);
 		yuv_texture = yuv_converter->get_output_texture();
@@ -433,8 +435,8 @@ Error YUVGPUConverter::_ensure_plane_textures() {
 		if (yuv_plane_textures[i].is_valid()) {
 			RDTextureFormatC format = TEXTURE_FORMAT_COMPAT(rd->texture_get_format(yuv_plane_textures[i]));
 
-			int desired_frame_width = i == 0 ? frame_size.width : Math::ceil(frame_size.width / 2.0f);
-			int desired_frame_height = i == 0 ? frame_size.height : Math::ceil(frame_size.height / 2.0f);
+			int desired_frame_width = i == 0 || i == 3 ? frame_size.width : Math::ceil(frame_size.width / 2.0f);
+			int desired_frame_height = i == 0 || i == 3 ? frame_size.height : Math::ceil(frame_size.height / 2.0f);
 
 			if (static_cast<int>(format.width) == desired_frame_width && static_cast<int>(format.height) == desired_frame_height) {
 				continue;
@@ -452,8 +454,8 @@ Error YUVGPUConverter::_ensure_plane_textures() {
 		RDTextureFormatC new_format;
 		new_format.format = RenderingDevice::DATA_FORMAT_R8_UNORM;
 		// chroma planes are half the size of the luma plane
-		new_format.width = i == 0 ? frame_size.width : Math::ceil(frame_size.width / 2.0f);
-		new_format.height = i == 0 ? frame_size.height : Math::ceil(frame_size.height / 2.0f);
+		new_format.width = i == 0 || i == 3 ? frame_size.width : Math::ceil(frame_size.width / 2.0f);
+		new_format.height = i == 0 || i == 3 ? frame_size.height : Math::ceil(frame_size.height / 2.0f);
 		new_format.depth = 1;
 		new_format.array_layers = 1;
 		new_format.mipmaps = 1;
@@ -547,17 +549,24 @@ RID YUVGPUConverter::_create_uniform_set(const RID &p_texture_rd_rid) {
 
 void YUVGPUConverter::_upload_plane_images() {
 	for (size_t i = 0; i < std::size(yuv_plane_images); i++) {
-		ERR_CONTINUE_MSG(!yuv_plane_images[i].is_valid(), vformat("YUV plane %d was missing, cannot upload texture data.", (int)i));
+		ERR_CONTINUE_MSG(!yuv_plane_images[i].is_valid() && i != 3, vformat("YUV plane %d was missing, cannot upload texture data.", (int)i));
+		if (!yuv_plane_images[i].is_valid()) {
+			continue;
+		}
 		RS::get_singleton()->get_rendering_device()->texture_update(yuv_plane_textures[i], 0, yuv_plane_images[i]->get_data());
 	}
 }
 
 void YUVGPUConverter::set_plane_image(int p_plane_idx, Ref<Image> p_image) {
+	if (!p_image.is_valid()) {
+		yuv_plane_images[p_plane_idx] = p_image;
+		return;
+	}
 	ERR_FAIL_COND(!p_image.is_valid());
 	ERR_FAIL_INDEX((size_t)p_plane_idx, std::size(yuv_plane_images));
 	// Sanity checks
-	int desired_frame_width = p_plane_idx == 0 ? frame_size.width : Math::ceil(frame_size.width / 2.0f);
-	int desired_frame_height = p_plane_idx == 0 ? frame_size.height : Math::ceil(frame_size.height / 2.0f);
+	int desired_frame_width = p_plane_idx == 0 || p_plane_idx == 3 ? frame_size.width : Math::ceil(frame_size.width / 2.0f);
+	int desired_frame_height = p_plane_idx == 0 || p_plane_idx == 3 ? frame_size.height : Math::ceil(frame_size.height / 2.0f);
 	ERR_FAIL_COND_MSG(p_image->get_width() != desired_frame_width, vformat("Wrong YUV plane width for plane %d, expected %d got %d", p_plane_idx, desired_frame_width, p_image->get_width()));
 	ERR_FAIL_COND_MSG(p_image->get_height() != desired_frame_height, vformat("Wrong YUV plane height for plane %, expected %d got %d", p_plane_idx, desired_frame_height, p_image->get_height()));
 	ERR_FAIL_COND_MSG(p_image->get_format() != Image::FORMAT_R8, "Wrong image format, expected R8");
@@ -585,12 +594,20 @@ void YUVGPUConverter::convert() {
 
 	RD *rd = RS::get_singleton()->get_rendering_device();
 
+	push_constant.use_alpha = yuv_plane_images[3].is_valid();
+
+	PackedByteArray push_constant_data;
+	push_constant_data.resize(sizeof(push_constant));
+	memcpy(push_constant_data.ptrw(), &push_constant, push_constant_data.size());
+
 	ComputeListID compute_list = rd->compute_list_begin();
 	rd->compute_list_bind_compute_pipeline(compute_list, pipeline);
+	rd->compute_list_set_push_constant(compute_list, push_constant_data, push_constant_data.size());
 	rd->compute_list_bind_uniform_set(compute_list, yuv_planes_uniform_sets[0], 0);
 	rd->compute_list_bind_uniform_set(compute_list, yuv_planes_uniform_sets[1], 1);
 	rd->compute_list_bind_uniform_set(compute_list, yuv_planes_uniform_sets[2], 2);
-	rd->compute_list_bind_uniform_set(compute_list, out_uniform_set, 3);
+	rd->compute_list_bind_uniform_set(compute_list, yuv_planes_uniform_sets[3], 3);
+	rd->compute_list_bind_uniform_set(compute_list, out_uniform_set, 4);
 	rd->compute_list_dispatch(compute_list, Math::ceil(frame_size.x / 8.0f), Math::ceil(frame_size.y / 8.0f), 1);
 	rd->compute_list_end();
 }

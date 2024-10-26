@@ -196,20 +196,21 @@ def get_soname(filename):
     else:
         return ""
 
+
 def osx_rename_libname(pattern, replacement, tool_prefix, filenames):
-    otool = tool_prefix + 'otool'
-    install_name_tool = tool_prefix + 'install_name_tool'
+    otool = tool_prefix + "otool"
+    install_name_tool = tool_prefix + "install_name_tool"
     for filename in filenames:
-        data = str(subprocess.check_output([otool, '-L', filename]).decode('utf-8')).strip()
-        val = map(lambda x: x[0], map(str.split, map(str.strip, data.strip().split('\n'))))
+        data = str(subprocess.check_output([otool, "-L", filename]).decode("utf-8")).strip()
+        val = map(lambda x: x[0], map(str.split, map(str.strip, data.strip().split("\n"))))
         val = list(val)[2:]
 
         to_change = {}
         for path in val:
             if re.findall(pattern, path):
                 new_path = re.sub(pattern, replacement, path)
-                to_change[path] = new_path if new_path.endswith('.dylib') else new_path + '.dylib'
+                to_change[path] = new_path if new_path.endswith(".dylib") else new_path + ".dylib"
 
-        for k,v in to_change.items():
-            print(k, v, sep=' -> ')
-            subprocess.call([install_name_tool, '-change', k, v, filename])
+        for k, v in to_change.items():
+            print(k, v, sep=" -> ")
+            subprocess.call([install_name_tool, "-change", k, v, filename])

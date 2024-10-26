@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef ET_VIDEO_STREAM_H
-#define ET_VIDEO_STREAM_H
+#ifndef FFMPEG_VIDEO_STREAM_H
+#define FFMPEG_VIDEO_STREAM_H
 
 #ifdef GDEXTENSION
 
@@ -56,13 +56,18 @@ using namespace godot;
 
 class YUVGPUConverter : public RefCounted {
 	RID shader;
-	Ref<Image> yuv_plane_images[3];
-	RID yuv_plane_textures[3];
-	RID yuv_planes_uniform_sets[3];
+	Ref<Image> yuv_plane_images[4];
+	RID yuv_plane_textures[4];
+	RID yuv_planes_uniform_sets[4];
 	RID pipeline;
 	Ref<Texture2DRD> out_texture;
 	RID out_uniform_set;
 	Vector2i frame_size;
+
+	struct PushConstant {
+		uint8_t use_alpha;
+		uint8_t padding[15];
+	} push_constant;
 
 private:
 	void _ensure_pipeline();
@@ -129,7 +134,7 @@ private:
 
 protected:
 	void clear();
-	static void _bind_methods(){}; // Required by GDExtension, do not remove
+	static void _bind_methods() {}; // Required by GDExtension, do not remove
 
 public:
 	Error load(Ref<FileAccess> p_file_access);
@@ -153,7 +158,7 @@ class FFmpegVideoStream : public VideoStream {
 	GDCLASS(FFmpegVideoStream, VideoStream);
 
 protected:
-	static void _bind_methods(){}; // Required by GDExtension, do not remove
+	static void _bind_methods() {}; // Required by GDExtension, do not remove
 	Ref<VideoStreamPlayback> instantiate_playback_internal() {
 		Ref<FileAccess> fa = FileAccess::open(get_file(), FileAccess::READ);
 		if (!fa.is_valid()) {
@@ -171,4 +176,4 @@ public:
 	STREAM_FUNC_REDIRECT_0(Ref<VideoStreamPlayback>, instantiate_playback);
 };
 
-#endif // ET_VIDEO_STREAM_H
+#endif // FFMPEG_VIDEO_STREAM_H

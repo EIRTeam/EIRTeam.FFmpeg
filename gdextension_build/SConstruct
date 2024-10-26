@@ -107,11 +107,14 @@ else:
         source=sources,
     )
 
+
 def install_ffmpeg_libname(target, source, env):
     methods.osx_rename_libname("^@.*framework/", "@loader_path/", "", [lib.get_path() for lib in target])
 
+
 def install_gdextension_libname(target, source, env):
     methods.osx_rename_libname("^@.*framework/", "@loader_path/../", "", [lib.get_path() for lib in target])
+
 
 ffmpeg_install_action = ffmpeg_download.ffmpeg_install(env, f"#{addon_platform_dir}", ffmpeg_path)
 env.Depends(sources, env.Install(addon_base_dir, "ffmpeg.gdextension"))
@@ -122,7 +125,7 @@ env.Depends(Glob("../*.glsl.gen.h"), ["#glsl_builders.py"])
 
 Default(library)
 
-if env['platform'] == 'macos':
+if env["platform"] == "macos":
     env.AddPostAction(ffmpeg_install_action, env.Action(install_ffmpeg_libname))
     env.AddPostAction(library, env.Action(install_gdextension_libname))
 
