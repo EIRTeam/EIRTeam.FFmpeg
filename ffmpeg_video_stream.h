@@ -65,8 +65,8 @@ class YUVGPUConverter : public RefCounted {
 	Vector2i frame_size;
 
 	struct PushConstant {
-		uint8_t use_alpha;
-		uint8_t padding[15];
+		uint32_t use_alpha;
+		uint8_t padding[11];
 	} push_constant;
 
 private:

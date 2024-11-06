@@ -594,7 +594,7 @@ void YUVGPUConverter::convert() {
 
 	RD *rd = RS::get_singleton()->get_rendering_device();
 
-	push_constant.use_alpha = yuv_plane_images[3].is_valid();
+	push_constant.use_alpha = yuv_plane_images[3].is_valid() ? 1 : 0;
 
 	PackedByteArray push_constant_data;
 	push_constant_data.resize(sizeof(push_constant));
