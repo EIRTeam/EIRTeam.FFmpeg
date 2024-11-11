@@ -50,6 +50,8 @@ extern "C" {
 }
 
 class FFmpegFrame : public RefCounted {
+	GDCLASS(FFmpegFrame, RefCounted);
+
 protected:
 	static void _bind_methods();
 

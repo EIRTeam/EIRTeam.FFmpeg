@@ -602,7 +602,12 @@ void YUVGPUConverter::convert() {
 
 	ComputeListID compute_list = rd->compute_list_begin();
 	rd->compute_list_bind_compute_pipeline(compute_list, pipeline);
+
+#ifdef GDEXTENSION
+	rd->compute_list_set_push_constant(compute_list, push_constant_data, push_constant_data.size());
+#else
 	rd->compute_list_set_push_constant(compute_list, push_constant_data.ptr(), push_constant_data.size());
+#endif
 	rd->compute_list_bind_uniform_set(compute_list, yuv_planes_uniform_sets[0], 0);
 	rd->compute_list_bind_uniform_set(compute_list, yuv_planes_uniform_sets[1], 1);
 	rd->compute_list_bind_uniform_set(compute_list, yuv_planes_uniform_sets[2], 2);

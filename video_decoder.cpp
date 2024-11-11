@@ -307,7 +307,7 @@ void VideoDecoder::_decode_next_frame(AVPacket *p_packet, AVFrame *p_receive_fra
 
 		bool unref_packet = true;
 
-		if (p_packet->stream_index == video_stream->index || p_packet->stream_index == audio_stream->index) {
+		if ((video_stream && p_packet->stream_index == video_stream->index) || (audio_stream && p_packet->stream_index == audio_stream->index)) {
 			AVCodecContext *codec_ctx = video_codec_context;
 			if (has_audio && p_packet->stream_index == audio_stream->index) {
 				codec_ctx = audio_codec_context;
@@ -516,7 +516,6 @@ void VideoDecoder::_scaler_frame_return(Ref<FFmpegFrame> p_scaler_frame) {
 Ref<FFmpegFrame> VideoDecoder::_ensure_frame_pixel_format(Ref<FFmpegFrame> p_frame, AVPixelFormat p_target_pixel_format) {
 	ZoneScopedN("Video decoder rescale");
 
-	print_line(p_frame->get_frame()->format);
 	if (p_frame->get_frame()->format == p_target_pixel_format) {
 		return p_frame;
 	}
