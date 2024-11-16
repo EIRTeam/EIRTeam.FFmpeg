@@ -29,7 +29,6 @@
 /**************************************************************************/
 
 #include "register_types.h"
-#include "godot_cpp/core/class_db.hpp"
 
 #ifdef GDEXTENSION
 #include "gdextension_build/gdex_print.h"
