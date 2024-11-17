@@ -325,6 +325,10 @@ void FFmpegVideoStreamPlayback::stop_internal() {
 		playback_position = 0.0f;
 		decoder->seek(playback_position, true);
 		just_seeked = true;
+		texture.unref();
+	}
+	if (yuv_converter.is_valid()) {
+		yuv_converter->clear_output_texture();
 	}
 	playing = false;
 }
@@ -387,7 +391,9 @@ YUVGPUConverter::~YUVGPUConverter() {
 	}
 
 	if (out_texture.is_valid() && out_texture->get_texture_rd_rid().is_valid()) {
-		FREE_RD_RID(out_texture->get_texture_rd_rid());
+		RID out_rid = out_texture->get_texture_rd_rid();
+		out_texture->set_texture_rd_rid(RID());
+		FREE_RD_RID(out_rid);
 	}
 
 	if (pipeline.is_valid()) {
@@ -396,6 +402,13 @@ YUVGPUConverter::~YUVGPUConverter() {
 
 	if (shader.is_valid()) {
 		FREE_RD_RID(shader);
+	}
+}
+
+void YUVGPUConverter::_clear_texture_internal() {
+	if (out_texture.is_valid() && out_texture->get_texture_rd_rid().is_valid()) {
+		RD *rd = RS::get_singleton()->get_rendering_device();
+		rd->texture_clear(out_texture->get_texture_rd_rid(), Color(0, 0, 0, 0), 0, 1, 0, 1);
 	}
 }
 
@@ -586,6 +599,10 @@ void YUVGPUConverter::set_frame_size(const Vector2i &p_frame_size) {
 }
 
 void YUVGPUConverter::convert() {
+	RenderingServer::get_singleton()->call_on_render_thread(callable_mp(this, &YUVGPUConverter::_convert_internal));
+}
+
+void YUVGPUConverter::_convert_internal() {
 	// First we must ensure everything we need exists
 	_ensure_pipeline();
 	_ensure_plane_textures();
@@ -620,6 +637,10 @@ void YUVGPUConverter::convert() {
 Ref<Texture2D> YUVGPUConverter::get_output_texture() const {
 	const_cast<YUVGPUConverter *>(this)->_ensure_output_texture();
 	return out_texture;
+}
+
+void YUVGPUConverter::clear_output_texture() {
+	RenderingServer::get_singleton()->call_on_render_thread(callable_mp(this, &YUVGPUConverter::_clear_texture_internal));
 }
 
 YUVGPUConverter::YUVGPUConverter() {

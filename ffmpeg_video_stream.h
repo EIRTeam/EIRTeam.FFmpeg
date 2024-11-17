@@ -75,13 +75,16 @@ private:
 	Error _ensure_output_texture();
 	RID _create_uniform_set(const RID &p_texture_rd_rid);
 	void _upload_plane_images();
-
+	void _clear_texture_internal();
+	void _convert_internal();
 public:
 	void set_plane_image(int p_plane_idx, Ref<Image> p_image);
 	Vector2i get_frame_size() const;
 	void set_frame_size(const Vector2i &p_frame_size);
 	void convert();
 	Ref<Texture2D> get_output_texture() const;
+	void clear_output_texture();
+
 	YUVGPUConverter();
 	~YUVGPUConverter();
 };
