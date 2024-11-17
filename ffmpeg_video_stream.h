@@ -77,6 +77,7 @@ private:
 	void _upload_plane_images();
 	void _clear_texture_internal();
 	void _convert_internal();
+
 public:
 	void set_plane_image(int p_plane_idx, Ref<Image> p_image);
 	Vector2i get_frame_size() const;
