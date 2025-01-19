@@ -1,5 +1,7 @@
 from typing import Optional, Iterable
 from platform_methods import subprocess_main
+import sys, os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 import os.path
 
