@@ -1,10 +1,10 @@
-import os
-import sys
-import json
-import platform
-import uuid
 import functools
+import json
+import os
+import platform
 import subprocess
+import sys
+import uuid
 
 # NOTE: The multiprocessing module is not compatible with SCons due to conflict on cPickle
 
@@ -79,7 +79,16 @@ def subprocess_main(namespace):
 
 
 # CPU architecture options.
-architectures = ["x86_32", "x86_64", "arm32", "arm64", "rv64", "ppc32", "ppc64", "wasm32"]
+architectures = [
+    "x86_32",
+    "x86_64",
+    "arm32",
+    "arm64",
+    "rv64",
+    "ppc32",
+    "ppc64",
+    "wasm32",
+]
 architecture_aliases = {
     "x86": "x86_32",
     "x64": "x86_64",
@@ -146,14 +155,14 @@ def get_build_version(short):
     import version
 
     name = "custom_build"
-    if os.getenv("BUILD_NAME") != None:
+    if os.getenv("BUILD_NAME") is not None:
         name = os.getenv("BUILD_NAME")
     v = "%d.%d" % (version.major, version.minor)
     if version.patch > 0:
         v += ".%d" % version.patch
     status = version.status
     if not short:
-        if os.getenv("GODOT_VERSION_STATUS") != None:
+        if os.getenv("GODOT_VERSION_STATUS") is not None:
             status = str(os.getenv("GODOT_VERSION_STATUS"))
         v += ".%s.%s" % (status, name)
     return v
@@ -185,7 +194,7 @@ def get_mvk_sdk_path(osname):
     def int_or_zero(i):
         try:
             return int(i)
-        except:
+        except (TypeError, ValueError):
             return 0
 
     def ver_parse(a):
@@ -204,14 +213,18 @@ def get_mvk_sdk_path(osname):
             ver_comp = ver_parse(file)
             if ver_comp > ver_num and ver_comp >= ver_min:
                 # Try new SDK location.
-                lib_name = os.path.join(os.path.join(dirname, file), "macOS/lib/MoltenVK.xcframework/" + osname + "/")
+                lib_name = os.path.join(
+                    os.path.join(dirname, file),
+                    "macOS/lib/MoltenVK.xcframework/" + osname + "/",
+                )
                 if os.path.isfile(os.path.join(lib_name, "libMoltenVK.a")):
                     ver_num = ver_comp
                     lib_name_out = os.path.join(os.path.join(dirname, file), "macOS/lib/MoltenVK.xcframework")
                 else:
                     # Try old SDK location.
                     lib_name = os.path.join(
-                        os.path.join(dirname, file), "MoltenVK/MoltenVK.xcframework/" + osname + "/"
+                        os.path.join(dirname, file),
+                        "MoltenVK/MoltenVK.xcframework/" + osname + "/",
                     )
                     if os.path.isfile(os.path.join(lib_name, "libMoltenVK.a")):
                         ver_num = ver_comp
@@ -231,16 +244,21 @@ def detect_mvk(env, osname):
         mvk_list.insert(0, os.path.expanduser(env["vulkan_sdk_path"]))
         mvk_list.insert(
             0,
-            os.path.join(os.path.expanduser(env["vulkan_sdk_path"]), "macOS/lib/MoltenVK.xcframework"),
+            os.path.join(
+                os.path.expanduser(env["vulkan_sdk_path"]),
+                "macOS/lib/MoltenVK.xcframework",
+            ),
         )
         mvk_list.insert(
             0,
-            os.path.join(os.path.expanduser(env["vulkan_sdk_path"]), "MoltenVK/MoltenVK.xcframework"),
+            os.path.join(
+                os.path.expanduser(env["vulkan_sdk_path"]),
+                "MoltenVK/MoltenVK.xcframework",
+            ),
         )
 
     for mvk_path in mvk_list:
         if mvk_path and os.path.isfile(os.path.join(mvk_path, osname + "/libMoltenVK.a")):
-            mvk_found = True
             print("MoltenVK found at: " + mvk_path)
             return mvk_path
 

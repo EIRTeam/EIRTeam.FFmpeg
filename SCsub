@@ -1,15 +1,11 @@
 #!/usr/bin/env python
-
-from gdextension_build import ffmpeg_download
-from gdextension_build import methods
-from pathlib import Path
-import os
-import SCons
+from misc.utility.scons_hints import *
+import gdextension_build.ffmpeg_download as ffmpeg_download
 
 Import("env")
 
 if env["platform"] == "linuxbsd":
-    if not "RPATH" in env:
+    if "RPATH" not in env:
         env.Append(RPATH=env.Literal("\\$$ORIGIN"))
     env.Append(LINKFLAGS=["-Wl,--disable-new-dtags"])
 

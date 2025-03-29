@@ -1,8 +1,8 @@
 import os
-import pathlib
 import shutil
-import urllib.request
 import tarfile
+import urllib.request
+
 import SCons
 
 FFMPEG_DOWNLOAD_WIN64 = "https://github.com/EIRTeam/FFmpeg-Builds/releases/download/autobuild-2023-07-24-08-52/ffmpeg-N-111611-g5b11ee9429-win64-lgpl-godot.tar.xz"
@@ -59,10 +59,10 @@ def download_ffmpeg(target, source, env):
     local_filename, headers = urllib.request.urlretrieve(FFMPEG_DOWNLOAD_URL)
 
     def rewrite_subfolder_paths(tf, common_path):
-        l = len(common_path)
+        common_path_length = len(common_path)
         for member in tf.getmembers():
             if member.path.startswith(common_path):
-                member.path = member.path[l:]
+                member.path = member.path[common_path_length:]
                 yield member
 
     with tarfile.open(local_filename, mode="r") as f:

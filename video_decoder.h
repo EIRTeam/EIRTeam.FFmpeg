@@ -28,10 +28,9 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-// Osu inspired ffmpeg decoding code
-
 #ifndef VIDEO_DECODER_H
 #define VIDEO_DECODER_H
+// Osu inspired ffmpeg decoding code
 
 #ifdef GDEXTENSION
 
@@ -52,8 +51,6 @@ using namespace godot;
 #include "core/io/file_access.h"
 #include "core/templates/command_queue_mt.h"
 #include "scene/resources/image_texture.h"
-
-#endif
 
 #include "ffmpeg_codec.h"
 #include "ffmpeg_frame.h"
@@ -214,5 +211,7 @@ public:
 	VideoDecoder(Ref<FileAccess> p_file);
 	~VideoDecoder();
 };
+
+#endif // VIDEO_DECODER_H
 
 #endif // VIDEO_DECODER_H

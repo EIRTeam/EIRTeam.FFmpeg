@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 import atexit
-import os
 import sys
-import methods
 import time
+
 import ffmpeg_download
 import glsl_builders
+import methods
 
 # For the reference:
 # - CCFLAGS are compilation flags shared between C and C++
@@ -61,7 +61,7 @@ opts.Add(("ffmpeg_path", "Path to FFmpeg", ""))
 
 opts.Update(env)
 
-if not "ffmpeg_path" in env or not env["ffmpeg_path"]:
+if "ffmpeg_path" not in env or not env["ffmpeg_path"]:
     raise RuntimeError("ffmpeg path not found")
 
 if not env["verbose"]:
@@ -92,18 +92,18 @@ if env["platform"] == "windows" and sys.platform == "win32" and not env.get("is_
     )
 if env["platform"] == "macos":
     methods.write_macos_plist(
-        f'{addon_platform_dir}/libgdffmpeg.macos.{env["target"]}.framework',
-        f'libgdffmpeg_advanced.macos.{env["target"]}',
+        f"{addon_platform_dir}/libgdffmpeg.macos.{env['target']}.framework",
+        f"libgdffmpeg_advanced.macos.{env['target']}",
         "org.godotengine.ffmpeg",
         "FFmpeg for Godot",
     )
     library = env.SharedLibrary(
-        f'{addon_platform_dir}/libgdffmpeg.macos.{env["target"]}.framework/libgdffmpeg_advanced.macos.{env["target"]}',
+        f"{addon_platform_dir}/libgdffmpeg.macos.{env['target']}.framework/libgdffmpeg_advanced.macos.{env['target']}",
         source=sources,
     )
 else:
     library = env.SharedLibrary(
-        f'{addon_platform_dir}/libgdffmpeg{env["suffix"]}{env["SHLIBSUFFIX"]}',
+        f"{addon_platform_dir}/libgdffmpeg{env['suffix']}{env['SHLIBSUFFIX']}",
         source=sources,
     )
 

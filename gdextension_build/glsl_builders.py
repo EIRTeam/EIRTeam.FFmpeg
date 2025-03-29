@@ -1,7 +1,7 @@
-from typing import Optional, Iterable
-from platform_methods import subprocess_main
-
 import os.path
+from typing import Iterable, Optional
+
+from platform_methods import subprocess_main
 
 
 def generate_inline_code(input_lines: Iterable[str], insert_newline: bool = True):
@@ -45,7 +45,9 @@ def include_file_in_raw_header(filename: str, header_data: RAWHeaderStruct, dept
 
 
 def build_raw_header(
-    filename: str, optional_output_filename: Optional[str] = None, header_data: Optional[RAWHeaderStruct] = None
+    filename: str,
+    optional_output_filename: Optional[str] = None,
+    header_data: Optional[RAWHeaderStruct] = None,
 ):
     header_data = header_data or RAWHeaderStruct()
     include_file_in_raw_header(filename, header_data, 0)

@@ -1,10 +1,10 @@
-import os
-import sys
 import functools
+import json
+import os
 import re
 import subprocess
+import sys
 import uuid
-import json
 
 
 def no_verbose(sys, env):
@@ -69,9 +69,9 @@ def disable_warnings(self):
         self.Append(CCFLAGS=["/w"])
         self.Append(CFLAGS=["/w"])
         self.Append(CXXFLAGS=["/w"])
-        self["CCFLAGS"] = [x for x in self["CCFLAGS"] if not x in warn_flags]
-        self["CFLAGS"] = [x for x in self["CFLAGS"] if not x in warn_flags]
-        self["CXXFLAGS"] = [x for x in self["CXXFLAGS"] if not x in warn_flags]
+        self["CCFLAGS"] = [x for x in self["CCFLAGS"] if x not in warn_flags]
+        self["CFLAGS"] = [x for x in self["CFLAGS"] if x not in warn_flags]
+        self["CXXFLAGS"] = [x for x in self["CXXFLAGS"] if x not in warn_flags]
     else:
         self.Append(CCFLAGS=["-w"])
         self.Append(CFLAGS=["-w"])
@@ -82,32 +82,32 @@ def write_macos_plist(target, binary_name, identifier, name):
     os.makedirs(f"{target}/Resources/", exist_ok=True)
     f = open(f"{target}/Resources/Info.plist", "w")
 
-    f.write(f'<?xml version="1.0" encoding="UTF-8"?>\n')
-    f.write(f'<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n')
-    f.write(f'<plist version="1.0">\n')
-    f.write(f"<dict>\n")
-    f.write(f"\t<key>CFBundleExecutable</key>\n")
+    f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
+    f.write('<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n')
+    f.write('<plist version="1.0">\n')
+    f.write("<dict>\n")
+    f.write("\t<key>CFBundleExecutable</key>\n")
     f.write(f"\t<string>{binary_name}</string>\n")
-    f.write(f"\t<key>CFBundleIdentifier</key>\n")
+    f.write("\t<key>CFBundleIdentifier</key>\n")
     f.write(f"\t<string>{identifier}</string>\n")
-    f.write(f"\t<key>CFBundleInfoDictionaryVersion</key>\n")
-    f.write(f"\t<string>6.0</string>\n")
-    f.write(f"\t<key>CFBundleName</key>\n")
+    f.write("\t<key>CFBundleInfoDictionaryVersion</key>\n")
+    f.write("\t<string>6.0</string>\n")
+    f.write("\t<key>CFBundleName</key>\n")
     f.write(f"\t<string>{name}</string>\n")
-    f.write(f"\t<key>CFBundlePackageType</key>\n")
-    f.write(f"\t<string>FMWK</string>\n")
-    f.write(f"\t<key>CFBundleShortVersionString</key>\n")
-    f.write(f"\t<string>1.0.0</string>\n")
-    f.write(f"\t<key>CFBundleSupportedPlatforms</key>\n")
-    f.write(f"\t<array>\n")
-    f.write(f"\t\t<string>MacOSX</string>\n")
-    f.write(f"\t</array>\n")
-    f.write(f"\t<key>CFBundleVersion</key>\n")
-    f.write(f"\t<string>1.0.0</string>\n")
-    f.write(f"\t<key>LSMinimumSystemVersion</key>\n")
-    f.write(f"\t<string>10.14</string>\n")
-    f.write(f"</dict>\n")
-    f.write(f"</plist>\n")
+    f.write("\t<key>CFBundlePackageType</key>\n")
+    f.write("\t<string>FMWK</string>\n")
+    f.write("\t<key>CFBundleShortVersionString</key>\n")
+    f.write("\t<string>1.0.0</string>\n")
+    f.write("\t<key>CFBundleSupportedPlatforms</key>\n")
+    f.write("\t<array>\n")
+    f.write("\t\t<string>MacOSX</string>\n")
+    f.write("\t</array>\n")
+    f.write("\t<key>CFBundleVersion</key>\n")
+    f.write("\t<string>1.0.0</string>\n")
+    f.write("\t<key>LSMinimumSystemVersion</key>\n")
+    f.write("\t<string>10.14</string>\n")
+    f.write("</dict>\n")
+    f.write("</plist>\n")
 
 
 JSON_SERIALIZABLE_TYPES = (bool, int, float, str)
@@ -173,8 +173,8 @@ def run_in_subprocess(builder_function):
 
 
 def Run(env, function, subprocess=True):
-    from SCons.Script import Action
     from platform_methods import run_in_subprocess
+    from SCons.Script import Action
 
     if not subprocess:
         return Action(function, "$GENCOMSTR")
