@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 from misc.utility.scons_hints import *
+
 import gdextension_build.ffmpeg_download as ffmpeg_download
 
 Import("env")
@@ -20,6 +21,7 @@ sources = [x for x in Glob("*.cpp") if str(x) not in excluded]
 ffmpeg_path = env["ffmpeg_path"]
 
 env_ffmpeg.Prepend(CPPPATH=f"{ffmpeg_path}/include")
+env_ffmpeg.Prepend(CPPDEFINES="ENABLE_STREAM_INFO")
 env.Append(LIBPATH=[f"{ffmpeg_path}/lib"])
 
 ffmpeg_libs = ["avcodec", "avfilter", "avformat", "avutil", "swresample", "swscale"]

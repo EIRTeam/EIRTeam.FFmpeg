@@ -74,20 +74,6 @@ bool is_hardware_pixel_format(AVPixelFormat p_fmt) {
 	return false;
 }
 
-String ffmpeg_get_error_message(int p_error_code) {
-	const uint64_t buffer_size = 256;
-	Vector<char> buffer;
-	buffer.resize(buffer_size);
-
-	int str_error_code = av_strerror(p_error_code, buffer.ptrw(), buffer.size());
-
-	if (str_error_code < 0) {
-		return vformat("%d (av_strerror failed with code %d)", p_error_code, str_error_code);
-	}
-
-	return String::utf8(buffer.ptr());
-}
-
 int VideoDecoder::_read_packet_callback(void *p_opaque, uint8_t *p_buf, int p_buf_size) {
 	VideoDecoder *decoder = (VideoDecoder *)p_opaque;
 	uint64_t read_bytes = decoder->video_file->get_buffer(p_buf, p_buf_size);
@@ -836,4 +822,17 @@ double DecodedAudioFrame::get_time() const {
 
 PackedFloat32Array DecodedAudioFrame::get_sample_data() const {
 	return sample_data;
+}
+String ffmpeg_get_error_message(int p_error_code) {
+	const uint64_t buffer_size = 256;
+	Vector<char> buffer;
+	buffer.resize(buffer_size);
+
+	int str_error_code = av_strerror(p_error_code, buffer.ptrw(), buffer.size());
+
+	if (str_error_code < 0) {
+		return vformat("%d (av_strerror failed with code %d)", p_error_code, str_error_code);
+	}
+
+	return String::utf8(buffer.ptr());
 }

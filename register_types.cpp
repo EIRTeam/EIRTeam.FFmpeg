@@ -37,6 +37,7 @@
 #include "core/string/print_string.h"
 #endif
 
+#include "ffmpeg_stream_info.h"
 #include "ffmpeg_video_stream.h"
 #include "video_stream_ffmpeg_loader.h"
 
@@ -74,6 +75,11 @@ void initialize_ffmpeg_module(ModuleInitializationLevel p_level) {
 		return;
 	}
 	print_codecs();
+
+#ifdef ENABLE_STREAM_INFO
+	GDREGISTER_CLASS(FFmpegStreamInfo);
+#endif
+
 	GDREGISTER_ABSTRACT_CLASS(FFmpegVideoStreamPlayback);
 	GDREGISTER_ABSTRACT_CLASS(VideoStreamFFMpegLoader);
 	GDREGISTER_CLASS(FFmpegVideoStream);

@@ -62,6 +62,8 @@ extern "C" {
 
 #include <thread>
 
+String ffmpeg_get_error_message(int p_error_code);
+
 enum FFmpegFrameFormat {
 	RGBA8,
 	YUV420P,
