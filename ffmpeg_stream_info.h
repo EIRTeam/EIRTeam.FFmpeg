@@ -75,4 +75,5 @@ VARIANT_ENUM_CAST(FFmpegStreamInfo::AudioCodec);
 #endif // FFMPEG_STREAM_INFO_H
 
 #endif
+
 #endif // FFMPEG_STREAM_INFO_H
