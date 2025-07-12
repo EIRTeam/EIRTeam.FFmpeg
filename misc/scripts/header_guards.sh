@@ -23,9 +23,8 @@ for file in $files; do
   # Add custom prefix or suffix for generic filenames with a well-defined namespace.
 
   prefix=
-  if [[ "$file" == "modules/"*"/register_types.h" ]]; then
-    module=$(echo $file | sed "s@.*modules/\([^/]*\).*@\1@")
-    prefix="${module^^}_"
+  if [[ "$file" == *"/register_types.h" ]]; then
+    continue;
   fi
   if [[ "$file" == "platform/"*"/api/api.h" || "$file" == "platform/"*"/export/"* ]]; then
     platform=$(echo $file | sed "s@.*platform/\([^/]*\).*@\1@")
