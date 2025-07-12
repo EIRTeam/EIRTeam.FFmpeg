@@ -1,3 +1,4 @@
+#ifndef GDEXTENSION
 #include "core/error/error_macros.h"
 #include "core/object/class_db.h"
 extern "C" {
@@ -211,3 +212,4 @@ String FFmpegStreamInfo::audio_codec_to_string(AudioCodec p_codec) {
 }
 
 #endif // ENABLE_STREAM_INFO
+#endif

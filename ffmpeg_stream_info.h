@@ -1,6 +1,7 @@
 #ifndef FFMPEG_STREAM_INFO_H
 #define FFMPEG_STREAM_INFO_H
 
+#ifndef GDEXTENSION
 #ifdef ENABLE_STREAM_INFO
 
 #include "core/object/ref_counted.h"
@@ -73,4 +74,5 @@ VARIANT_ENUM_CAST(FFmpegStreamInfo::AudioCodec);
 
 #endif // FFMPEG_STREAM_INFO_H
 
+#endif
 #endif // FFMPEG_STREAM_INFO_H

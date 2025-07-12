@@ -35,9 +35,9 @@
 #include <godot_cpp/classes/resource_loader.hpp>
 #else
 #include "core/string/print_string.h"
+#include "ffmpeg_stream_info.h"
 #endif
 
-#include "ffmpeg_stream_info.h"
 #include "ffmpeg_video_stream.h"
 #include "video_stream_ffmpeg_loader.h"
 
@@ -76,7 +76,7 @@ void initialize_ffmpeg_module(ModuleInitializationLevel p_level) {
 	}
 	print_codecs();
 
-#ifdef ENABLE_STREAM_INFO
+#if defined(ENABLE_STREAM_INFO) && !defined(GDEXTENSION)
 	GDREGISTER_CLASS(FFmpegStreamInfo);
 #endif
 
