@@ -52,6 +52,8 @@ using namespace godot;
 #include "core/templates/command_queue_mt.h"
 #include "scene/resources/image_texture.h"
 
+#endif
+
 #include "ffmpeg_codec.h"
 #include "ffmpeg_frame.h"
 extern "C" {
@@ -213,7 +215,5 @@ public:
 	VideoDecoder(Ref<FileAccess> p_file);
 	~VideoDecoder();
 };
-
-#endif // VIDEO_DECODER_H
 
 #endif // VIDEO_DECODER_H
