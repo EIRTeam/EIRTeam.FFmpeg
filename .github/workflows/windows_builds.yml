@@ -5,7 +5,9 @@ on:
       target:
         required: true
         type: string
-
+      artifact-name:
+        required: true
+        type: string
 # Global Settings
 # SCONS_CACHE for windows must be set in the build environment
 env:
@@ -29,6 +31,7 @@ jobs:
           - name: Windows build - ${{ inputs.target }}
             cache-name: windows
             target: ${{ inputs.target }}
+            artifact-name: ${{ inputs.artifact-name }}
             # Skip debug symbols, they're way too big with MSVC.
             sconsflags: debug_symbols=no
     steps:
@@ -69,5 +72,5 @@ jobs:
       - name: Upload artifact
         uses: ./.github/actions/upload-artifact
         with:
-          name: artifacts
+          name: ${{ matrix.artifact-name }}
           path: ./gdextension_build/build/*

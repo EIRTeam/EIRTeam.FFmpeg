@@ -19,21 +19,25 @@ jobs:
     name: 🏁 Windows Debug
     uses: ./.github/workflows/windows_builds.yml
     with:
+      artifact-name: windows_template_debug
       target: template_debug
   windows-build-release:
     name: 🏁 Windows Release
     uses: ./.github/workflows/windows_builds.yml
     with:
+      artifact-name: windows_template_release
       target: template_release
   linux-build-debug:
     name: 🐧 Linux Debug
     uses: ./.github/workflows/linux_builds.yml
     with:
+      artifact-name: linux_template_debug
       target: template_debug
   linux-build-release:
     name: 🐧 Linux Release
     uses: ./.github/workflows/linux_builds.yml
     with:
+      artifact-name: linux_template_release
       target: template_release
   static-checks:
     name: 📊 Static checks
@@ -47,9 +51,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
       - name: Download artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
-          name: artifacts
+          name: windows_template_debug
+          path: artifacts_windows
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows_template_release
+          path: artifacts_windows
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: linux_template_release
+          path: artifacts_windows
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: linux_template_debug
           path: artifacts_windows
       - name: Calculate short sha
         id: vars
