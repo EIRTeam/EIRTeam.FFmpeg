@@ -35,11 +35,11 @@
 #include <godot_cpp/classes/os.hpp>
 
 void CommandQueueMT::lock() {
-	mutex.lock();
+	mutex->lock();
 }
 
 void CommandQueueMT::unlock() {
-	mutex.unlock();
+	mutex->unlock();
 }
 
 void CommandQueueMT::wait_for_flush() {
@@ -72,13 +72,11 @@ CommandQueueMT::SyncSemaphore *CommandQueueMT::_alloc_sync_sem() {
 }
 
 CommandQueueMT::CommandQueueMT() {
-	sync = memnew(Semaphore);
+	sync.instantiate();
+	mutex.instantiate();
 }
 
 CommandQueueMT::~CommandQueueMT() {
-	if (sync) {
-		memdelete(sync);
-	}
 }
 
 #endif

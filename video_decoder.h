@@ -32,6 +32,8 @@
 #define VIDEO_DECODER_H
 // Osu inspired ffmpeg decoding code
 
+#include "gdextension_build/sync_compat.h"
+
 #ifdef GDEXTENSION
 
 // Headers for building as GDExtension plug-in.
@@ -132,7 +134,7 @@ private:
 	FFmpegFrameFormat frame_format;
 	Vector<Ref<DecodedAudioFrame>> decoded_audio_frames;
 
-	Mutex audio_buffer_mutex;
+	Ref<CoreBind::Mutex> audio_buffer_mutex;
 
 	SwsContext *sws_context = nullptr;
 	SwrContext *swr_context = nullptr;
@@ -155,13 +157,13 @@ private:
 	SafeNumeric<float> last_decoded_frame_time;
 	Ref<FileAccess> video_file;
 	BitField<HardwareVideoDecoder> target_hw_video_decoders = HardwareVideoDecoder::ANY;
-	Mutex available_textures_mutex;
+	Ref<CoreBind::Mutex> available_textures_mutex;
 	List<Ref<ImageTexture>> available_textures;
-	Mutex hw_transfer_frames_mutex;
+	Ref<CoreBind::Mutex> hw_transfer_frames_mutex;
 	List<Ref<FFmpegFrame>> hw_transfer_frames;
-	Mutex scaler_frames_mutex;
+	Ref<CoreBind::Mutex> scaler_frames_mutex;
 	List<Ref<FFmpegFrame>> scaler_frames;
-	Mutex decoded_frames_mutex;
+	Ref<CoreBind::Mutex> decoded_frames_mutex;
 	Vector<Ref<DecodedFrame>> decoded_frames;
 	std::thread *thread = nullptr;
 	SafeFlag thread_abort;

@@ -248,9 +248,9 @@ void VideoDecoder::_thread_func(void *userdata) {
 		switch (decoder->decoder_state) {
 			case READY:
 			case RUNNING: {
-				decoder->decoded_frames_mutex.lock();
+				decoder->decoded_frames_mutex->lock();
 				bool needs_frame = decoder->decoded_frames.size() < MAX_PENDING_FRAMES;
-				decoder->decoded_frames_mutex.unlock();
+				decoder->decoded_frames_mutex->unlock();
 				if (needs_frame) {
 					FrameMarkStart(video_decoding);
 					decoder->_decode_next_frame(packet, receive_frame);
@@ -382,11 +382,11 @@ void VideoDecoder::_read_decoded_frames(AVFrame *p_received_frame) {
 		if (frame_format == FFmpegFrameFormat::YUV420P || frame_format == FFmpegFrameFormat::YUVA420P) {
 			// Special path for YUV images
 			Ref<DecodedFrame> yuv_frame = _unwrap_yuv_frame(frame_time, frame, frame_format);
-			decoded_frames_mutex.lock();
+			decoded_frames_mutex->lock();
 			if (!skip_current_outputs.is_set()) {
 				decoded_frames.push_back(yuv_frame);
 			}
-			decoded_frames_mutex.unlock();
+			decoded_frames_mutex->unlock();
 			continue;
 		}
 
@@ -418,12 +418,12 @@ void VideoDecoder::_read_decoded_frames(AVFrame *p_received_frame) {
 		}
 #ifdef FFMPEG_MT_GPU_UPLOAD
 		Ref<ImageTexture> tex;
-		available_textures_mutex.lock();
+		available_textures_mutex->lock();
 		if (available_textures.size() > 0) {
 			tex = available_textures[0];
 			available_textures.pop_front();
 		}
-		available_textures_mutex.unlock();
+		available_textures_mutex->unlock();
 		{
 			ZoneNamedN(image_unwrap_gpu, "Image unwrap GPU upload", true);
 			if (!tex.is_valid() || tex->get_size() != image->get_size() || tex->get_format() != image->get_format()) {
@@ -434,15 +434,15 @@ void VideoDecoder::_read_decoded_frames(AVFrame *p_received_frame) {
 				tex->update(image);
 			}
 		}
-		decoded_frames_mutex.lock();
+		decoded_frames_mutex->lock();
 		decoded_frames.push_back(memnew(DecodedFrame(frame_time, tex)));
-		decoded_frames_mutex.unlock();
+		decoded_frames_mutex->unlock();
 #else
-		decoded_frames_mutex.lock();
+		decoded_frames_mutex->lock();
 		if (!skip_current_outputs.is_set()) {
 			decoded_frames.push_back(memnew(DecodedFrame(frame_time, image)));
 		}
-		decoded_frames_mutex.unlock();
+		decoded_frames_mutex->unlock();
 #endif
 	}
 }
@@ -482,11 +482,11 @@ void VideoDecoder::_read_decoded_audio_frames(AVFrame *p_received_frame) {
 		Ref<DecodedAudioFrame> audio_frame = memnew(DecodedAudioFrame(frame_time));
 		audio_frame->sample_data.resize(data_size / sizeof(float));
 		memcpy(audio_frame->sample_data.ptrw(), frame->data[0], data_size);
-		audio_buffer_mutex.lock();
+		audio_buffer_mutex->lock();
 		if (!skip_current_outputs.is_set()) {
 			decoded_audio_frames.push_back(audio_frame);
 		}
-		audio_buffer_mutex.unlock();
+		audio_buffer_mutex->unlock();
 
 		av_frame_unref(p_received_frame);
 		if (frame != p_received_frame) {
@@ -655,16 +655,16 @@ String VideoDecoder::_codec_id_to_libvpx(AVCodecID p_codec_id) const {
 }
 
 void VideoDecoder::seek(double p_time, bool p_wait) {
-	decoded_frames_mutex.lock();
-	audio_buffer_mutex.lock();
+	decoded_frames_mutex->lock();
+	audio_buffer_mutex->lock();
 
 	decoded_frames.clear();
 	decoded_audio_frames.clear();
 
 	last_decoded_frame_time.set(p_time);
 	skip_current_outputs.set();
-	decoded_frames_mutex.unlock();
-	audio_buffer_mutex.unlock();
+	decoded_frames_mutex->unlock();
+	audio_buffer_mutex->unlock();
 	if (p_wait) {
 		decoder_commands.push_and_sync(this, &VideoDecoder::_seek_command, p_time);
 	} else {
@@ -694,22 +694,25 @@ void VideoDecoder::return_frames(Vector<Ref<DecodedFrame>> p_frames) {
 }
 
 void VideoDecoder::return_frame(Ref<DecodedFrame> p_frame) {
-	MutexLock lock(available_textures_mutex);
+	available_textures_mutex->lock();
 	available_textures.push_back(p_frame->get_texture());
+	available_textures_mutex->unlock();
 }
 
 Vector<Ref<DecodedFrame>> VideoDecoder::get_decoded_frames() {
 	Vector<Ref<DecodedFrame>> frames;
-	MutexLock lock(decoded_frames_mutex);
+	decoded_frames_mutex->lock();
 	frames = decoded_frames.duplicate();
 	decoded_frames.clear();
+	decoded_frames_mutex->unlock();
 	return frames;
 }
 
 Vector<Ref<DecodedAudioFrame>> VideoDecoder::get_decoded_audio_frames() {
-	MutexLock lock(audio_buffer_mutex);
+	audio_buffer_mutex->lock();
 	Vector<Ref<DecodedAudioFrame>> frames = decoded_audio_frames.duplicate();
 	decoded_audio_frames.clear();
+	audio_buffer_mutex->unlock();
 	return frames;
 }
 
@@ -752,6 +755,11 @@ int VideoDecoder::get_audio_channel_count() const {
 
 VideoDecoder::VideoDecoder(Ref<FileAccess> p_file) {
 	video_file = p_file;
+	available_textures_mutex.instantiate();
+	hw_transfer_frames_mutex.instantiate();
+	scaler_frames_mutex.instantiate();
+	decoded_frames_mutex.instantiate();
+	audio_buffer_mutex.instantiate();
 }
 
 VideoDecoder::~VideoDecoder() {

@@ -38,6 +38,7 @@
 #include <godot_cpp/classes/semaphore.hpp>
 #include <godot_cpp/godot.hpp>
 #include <godot_cpp/templates/local_vector.hpp>
+#include "gdextension_build/sync_compat.h"
 
 using namespace godot;
 
@@ -259,7 +260,7 @@ using namespace godot;
 		cmd->method = p_method;                                              \
 		SEMIC_SEP_LIST(CMD_ASSIGN_PARAM, N);                                 \
 		unlock();                                                            \
-		if (sync)                                                            \
+		if (sync.is_valid())                                                            \
 			sync->post();                                                    \
 	}
 
@@ -276,9 +277,9 @@ using namespace godot;
 		cmd->ret = r_ret;                                                                      \
 		cmd->sync_sem = ss;                                                                    \
 		unlock();                                                                              \
-		if (sync)                                                                              \
+		if (sync.is_valid())                                                                              \
 			sync->post();                                                                      \
-		ss->sem.wait();                                                                        \
+		ss->sem->wait();                                                                        \
 		ss->in_use = false;                                                                    \
 	}
 
@@ -294,9 +295,9 @@ using namespace godot;
 		SEMIC_SEP_LIST(CMD_ASSIGN_PARAM, N);                                          \
 		cmd->sync_sem = ss;                                                           \
 		unlock();                                                                     \
-		if (sync)                                                                     \
+		if (sync.is_valid())                                                               \
 			sync->post();                                                             \
-		ss->sem.wait();                                                               \
+		ss->sem->wait();                                                               \
 		ss->in_use = false;                                                           \
 	}
 
@@ -304,8 +305,11 @@ using namespace godot;
 
 class CommandQueueMT {
 	struct SyncSemaphore {
-		Semaphore sem;
+		Ref<CoreBind::Semaphore> sem;
 		bool in_use = false;
+		SyncSemaphore() {
+			sem.instantiate();
+		}
 	};
 
 	struct CommandBase {
@@ -318,7 +322,7 @@ class CommandQueueMT {
 		SyncSemaphore *sync_sem = nullptr;
 
 		virtual void post() override {
-			sync_sem->sem.post();
+			sync_sem->sem->post();
 		}
 	};
 
@@ -342,8 +346,8 @@ class CommandQueueMT {
 
 	LocalVector<uint8_t> command_mem;
 	SyncSemaphore sync_sems[SYNC_SEMAPHORES];
-	Mutex mutex;
-	Semaphore *sync = nullptr;
+	Ref<CoreBind::Mutex> mutex;
+	Ref<CoreBind::Semaphore> sync;
 
 	template <class T>
 	T *allocate() {
@@ -413,7 +417,7 @@ public:
 	}
 
 	void wait_and_flush() {
-		ERR_FAIL_COND(!sync);
+		ERR_FAIL_COND(!sync.is_valid());
 		sync->wait();
 		_flush();
 	}
