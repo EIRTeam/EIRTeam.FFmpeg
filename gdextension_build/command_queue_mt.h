@@ -34,11 +34,11 @@
 #ifdef GDEXTENSION
 
 // Headers for building as GDExtension plug-in.
+#include "gdextension_build/sync_compat.h"
 #include <godot_cpp/classes/mutex.hpp>
 #include <godot_cpp/classes/semaphore.hpp>
 #include <godot_cpp/godot.hpp>
 #include <godot_cpp/templates/local_vector.hpp>
-#include "gdextension_build/sync_compat.h"
 
 using namespace godot;
 
@@ -260,7 +260,7 @@ using namespace godot;
 		cmd->method = p_method;                                              \
 		SEMIC_SEP_LIST(CMD_ASSIGN_PARAM, N);                                 \
 		unlock();                                                            \
-		if (sync.is_valid())                                                            \
+		if (sync.is_valid())                                                 \
 			sync->post();                                                    \
 	}
 
@@ -277,9 +277,9 @@ using namespace godot;
 		cmd->ret = r_ret;                                                                      \
 		cmd->sync_sem = ss;                                                                    \
 		unlock();                                                                              \
-		if (sync.is_valid())                                                                              \
+		if (sync.is_valid())                                                                   \
 			sync->post();                                                                      \
-		ss->sem->wait();                                                                        \
+		ss->sem->wait();                                                                       \
 		ss->in_use = false;                                                                    \
 	}
 
@@ -295,9 +295,9 @@ using namespace godot;
 		SEMIC_SEP_LIST(CMD_ASSIGN_PARAM, N);                                          \
 		cmd->sync_sem = ss;                                                           \
 		unlock();                                                                     \
-		if (sync.is_valid())                                                               \
+		if (sync.is_valid())                                                          \
 			sync->post();                                                             \
-		ss->sem->wait();                                                               \
+		ss->sem->wait();                                                              \
 		ss->in_use = false;                                                           \
 	}
 
