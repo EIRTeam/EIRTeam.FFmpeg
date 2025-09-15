@@ -31,6 +31,8 @@
 #ifndef FFMPEG_VIDEO_STREAM_H
 #define FFMPEG_VIDEO_STREAM_H
 
+#include "video_decoder.h"
+
 #ifdef GDEXTENSION
 
 // Headers for building as GDExtension plug-in.
@@ -51,8 +53,6 @@ using namespace godot;
 #include "scene/resources/video_stream.h"
 
 #endif
-
-#include "video_decoder.h"
 
 class YUVGPUConverter : public RefCounted {
 	RID shader;

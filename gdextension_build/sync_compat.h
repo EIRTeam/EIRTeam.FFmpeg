@@ -37,10 +37,14 @@
 #include <godot_cpp/classes/mutex.hpp>
 #include <godot_cpp/classes/semaphore.hpp>
 
-namespace CoreBind {
+namespace core_bind {
 using Mutex = godot::Mutex;
 using Semaphore = godot::Semaphore;
-}; //namespace CoreBind
+}; //namespace core_bind
+
+#else
+
+#include "core/core_bind.h"
 
 #endif
 #endif // SYNC_COMPAT_H

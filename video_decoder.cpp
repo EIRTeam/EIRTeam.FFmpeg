@@ -63,8 +63,7 @@ bool is_hardware_pixel_format(AVPixelFormat p_fmt) {
 		case AV_PIX_FMT_OPENCL:
 		case AV_PIX_FMT_MEDIACODEC:
 		case AV_PIX_FMT_VULKAN:
-		case AV_PIX_FMT_MMAL:
-		case AV_PIX_FMT_XVMC: {
+		case AV_PIX_FMT_MMAL: {
 			return true;
 		}
 		default: {

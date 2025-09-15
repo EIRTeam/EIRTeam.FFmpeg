@@ -305,7 +305,7 @@ using namespace godot;
 
 class CommandQueueMT {
 	struct SyncSemaphore {
-		Ref<CoreBind::Semaphore> sem;
+		Ref<core_bind::Semaphore> sem;
 		bool in_use = false;
 		SyncSemaphore() {
 			sem.instantiate();
@@ -346,8 +346,8 @@ class CommandQueueMT {
 
 	LocalVector<uint8_t> command_mem;
 	SyncSemaphore sync_sems[SYNC_SEMAPHORES];
-	Ref<CoreBind::Mutex> mutex;
-	Ref<CoreBind::Semaphore> sync;
+	Ref<core_bind::Mutex> mutex;
+	Ref<core_bind::Semaphore> sync;
 
 	template <class T>
 	T *allocate() {

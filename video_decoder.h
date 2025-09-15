@@ -134,7 +134,7 @@ private:
 	FFmpegFrameFormat frame_format;
 	Vector<Ref<DecodedAudioFrame>> decoded_audio_frames;
 
-	Ref<CoreBind::Mutex> audio_buffer_mutex;
+	Ref<core_bind::Mutex> audio_buffer_mutex;
 
 	SwsContext *sws_context = nullptr;
 	SwrContext *swr_context = nullptr;
@@ -157,13 +157,13 @@ private:
 	SafeNumeric<float> last_decoded_frame_time;
 	Ref<FileAccess> video_file;
 	BitField<HardwareVideoDecoder> target_hw_video_decoders = HardwareVideoDecoder::ANY;
-	Ref<CoreBind::Mutex> available_textures_mutex;
+	Ref<core_bind::Mutex> available_textures_mutex;
 	List<Ref<ImageTexture>> available_textures;
-	Ref<CoreBind::Mutex> hw_transfer_frames_mutex;
+	Ref<core_bind::Mutex> hw_transfer_frames_mutex;
 	List<Ref<FFmpegFrame>> hw_transfer_frames;
-	Ref<CoreBind::Mutex> scaler_frames_mutex;
+	Ref<core_bind::Mutex> scaler_frames_mutex;
 	List<Ref<FFmpegFrame>> scaler_frames;
-	Ref<CoreBind::Mutex> decoded_frames_mutex;
+	Ref<core_bind::Mutex> decoded_frames_mutex;
 	Vector<Ref<DecodedFrame>> decoded_frames;
 	std::thread *thread = nullptr;
 	SafeFlag thread_abort;
