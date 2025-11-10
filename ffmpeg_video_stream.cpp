@@ -488,7 +488,7 @@ Error YUVGPUConverter::_ensure_plane_textures() {
 			FREE_RD_RID(yuv_planes_uniform_sets[i]);
 		}
 
-		yuv_planes_uniform_sets[i] = _create_uniform_set(yuv_plane_textures[i]);
+		yuv_planes_uniform_sets[i] = _create_uniform_set(yuv_plane_textures[i], i);
 	}
 
 	return OK;
@@ -536,11 +536,11 @@ Error YUVGPUConverter::_ensure_output_texture() {
 	if (out_uniform_set.is_valid()) {
 		FREE_RD_RID(out_uniform_set);
 	}
-	out_uniform_set = _create_uniform_set(out_texture->get_texture_rd_rid());
+	out_uniform_set = _create_uniform_set(out_texture->get_texture_rd_rid(), 4);
 	return OK;
 }
 
-RID YUVGPUConverter::_create_uniform_set(const RID &p_texture_rd_rid) {
+RID YUVGPUConverter::_create_uniform_set(const RID &p_texture_rd_rid, int p_shader_set) {
 #ifdef GDEXTENSION
 	Ref<RDUniform> uniform;
 	uniform.instantiate();
@@ -557,7 +557,7 @@ RID YUVGPUConverter::_create_uniform_set(const RID &p_texture_rd_rid) {
 	Vector<RD::Uniform> uniforms;
 	uniforms.push_back(uniform);
 #endif
-	return RS::get_singleton()->get_rendering_device()->uniform_set_create(uniforms, shader, 0);
+	return RS::get_singleton()->get_rendering_device()->uniform_set_create(uniforms, shader, p_shader_set);
 }
 
 void YUVGPUConverter::_upload_plane_images() {
@@ -630,6 +630,11 @@ void YUVGPUConverter::_convert_internal() {
 	rd->compute_list_bind_uniform_set(compute_list, yuv_planes_uniform_sets[2], 2);
 	rd->compute_list_bind_uniform_set(compute_list, yuv_planes_uniform_sets[3], 3);
 	rd->compute_list_bind_uniform_set(compute_list, out_uniform_set, 4);
+
+	for (int i = 0; i < 4; i++) {
+		print_line(vformat("Set %d", i), yuv_planes_uniform_sets[i].is_valid());
+	}
+
 	rd->compute_list_dispatch(compute_list, Math::ceil(frame_size.x / 8.0f), Math::ceil(frame_size.y / 8.0f), 1);
 	rd->compute_list_end();
 }

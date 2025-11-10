@@ -73,7 +73,7 @@ private:
 	void _ensure_pipeline();
 	Error _ensure_plane_textures();
 	Error _ensure_output_texture();
-	RID _create_uniform_set(const RID &p_texture_rd_rid);
+	RID _create_uniform_set(const RID &p_texture_rd_rid, int p_shader_set);
 	void _upload_plane_images();
 	void _clear_texture_internal();
 	void _convert_internal();
@@ -138,7 +138,7 @@ private:
 
 protected:
 	void clear();
-	static void _bind_methods() {}; // Required by GDExtension, do not remove
+	static void _bind_methods(){}; // Required by GDExtension, do not remove
 
 public:
 	Error load(Ref<FileAccess> p_file_access);
@@ -162,7 +162,7 @@ class FFmpegVideoStream : public VideoStream {
 	GDCLASS(FFmpegVideoStream, VideoStream);
 
 protected:
-	static void _bind_methods() {}; // Required by GDExtension, do not remove
+	static void _bind_methods(){}; // Required by GDExtension, do not remove
 	Ref<VideoStreamPlayback> instantiate_playback_internal() {
 		Ref<FileAccess> fa = FileAccess::open(get_file(), FileAccess::READ);
 		if (!fa.is_valid()) {
