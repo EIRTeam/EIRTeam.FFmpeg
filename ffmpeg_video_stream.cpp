@@ -631,10 +631,6 @@ void YUVGPUConverter::_convert_internal() {
 	rd->compute_list_bind_uniform_set(compute_list, yuv_planes_uniform_sets[3], 3);
 	rd->compute_list_bind_uniform_set(compute_list, out_uniform_set, 4);
 
-	for (int i = 0; i < 4; i++) {
-		print_line(vformat("Set %d", i), yuv_planes_uniform_sets[i].is_valid());
-	}
-
 	rd->compute_list_dispatch(compute_list, Math::ceil(frame_size.x / 8.0f), Math::ceil(frame_size.y / 8.0f), 1);
 	rd->compute_list_end();
 }
