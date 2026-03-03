@@ -191,7 +191,7 @@ private:
 	Ref<FFmpegFrame> _ensure_frame_pixel_format(Ref<FFmpegFrame> p_frame, AVPixelFormat p_target_pixel_format);
 	Ref<DecodedFrame> _unwrap_yuv_frame(double p_frame_time, Ref<FFmpegFrame> p_frame, FFmpegFrameFormat p_out_format);
 	AVFrame *_ensure_frame_audio_format(AVFrame *p_frame, AVSampleFormat p_target_audio_format);
-	String _codec_id_to_libvpx(AVCodecID p_codec_id) const;
+	String _codec_id_to_preferred_decoder_name(AVCodecID p_codec_id) const;
 
 public:
 	struct AvailableDecoderInfo {
