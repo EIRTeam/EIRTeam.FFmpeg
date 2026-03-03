@@ -124,14 +124,37 @@ void VideoDecoder::prepare_decoding() {
 	ERR_FAIL_COND_MSG(find_stream_info_result < 0, vformat("Error finding stream info: %s", ffmpeg_get_error_message(find_stream_info_result)));
 
 	int stream_index = av_find_best_stream(format_context, AVMEDIA_TYPE_VIDEO, -1, -1, (const AVCodec **)&codec, 0);
+
+	// The stream was found but FFmpeg has no decoder for its codec.
+	// Re-probe ignoring decoder availability so we can name the codec and try a fallback.
+	if (stream_index == AVERROR_DECODER_NOT_FOUND && format_context->video_codec == nullptr) {
+		int raw_stream_index = av_find_best_stream(format_context, AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
+		if (raw_stream_index >= 0) {
+			const AVCodecID unsupported_id = format_context->streams[raw_stream_index]->codecpar->codec_id;
+			String fallback_name = _codec_id_to_preferred_decoder_name(unsupported_id);
+			if (!fallback_name.is_empty()) {
+				forced_video_codec = avcodec_find_decoder_by_name(fallback_name.utf8().get_data());
+				if (forced_video_codec != nullptr) {
+					print_line(vformat("No default decoder for '%s', retrying with '%s'.",
+							avcodec_get_name(unsupported_id), fallback_name));
+					avformat_close_input(&format_context);
+					prepare_decoding();
+					return;
+				}
+			}
+			ERR_FAIL_MSG(vformat("No decoder found for '%s': codec not supported by this FFmpeg build.",
+					avcodec_get_name(unsupported_id)));
+		}
+	}
+
 	ERR_FAIL_COND_MSG(stream_index < 0, vformat("Couldn't find video stream: %s", ffmpeg_get_error_message(stream_index)));
 
 	{
 		if (format_context->video_codec == nullptr) {
 			const AVCodecID codec_id = format_context->streams[stream_index]->codecpar->codec_id;
-			String libvpx_decoder_name = _codec_id_to_libvpx(codec_id);
-			if (!libvpx_decoder_name.is_empty()) {
-				forced_video_codec = avcodec_find_decoder_by_name(libvpx_decoder_name.utf8().get_data());
+			String preferred_decoder_name = _codec_id_to_preferred_decoder_name(codec_id);
+			if (!preferred_decoder_name.is_empty()) {
+				forced_video_codec = avcodec_find_decoder_by_name(preferred_decoder_name.utf8().get_data());
 				if (forced_video_codec != nullptr) {
 					avformat_close_input(&format_context);
 					prepare_decoding();
@@ -638,19 +661,24 @@ AVFrame *VideoDecoder::_ensure_frame_audio_format(AVFrame *p_frame, AVSampleForm
 	return out_frame;
 }
 
-String VideoDecoder::_codec_id_to_libvpx(AVCodecID p_codec_id) const {
-	String out;
+String VideoDecoder::_codec_id_to_preferred_decoder_name(AVCodecID p_codec_id) const {
 	switch (p_codec_id) {
 		case AVCodecID::AV_CODEC_ID_VP8: {
-			out = "libvpx";
+			return "libvpx";
 		} break;
 		case AVCodecID::AV_CODEC_ID_VP9: {
-			out = "libvpx-vp9";
-		}
+			return "libvpx-vp9";
+		} break;
+		case AVCodecID::AV_CODEC_ID_HEVC: {
+			return "hevc";
+		} break;
+		case AVCodecID::AV_CODEC_ID_AV1: {
+			return "libaom-av1";
+		} break;
 		default: {
 		} break;
 	}
-	return out;
+	return String();
 }
 
 void VideoDecoder::seek(double p_time, bool p_wait) {
