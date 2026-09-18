@@ -614,8 +614,13 @@ void YUVGPUConverter::_convert_internal() {
 	push_constant.use_alpha = yuv_plane_images[3].is_valid() ? 1 : 0;
 
 	PackedByteArray push_constant_data;
-	push_constant_data.resize(sizeof(push_constant));
-	memcpy(push_constant_data.ptrw(), &push_constant, push_constant_data.size());
+	// Godot 4.7's RenderingDevice strictly validates the push constant size
+	// against what the compute shader declares (4 bytes here: bool use_alpha).
+	// Uploading the padded 16-byte struct gets the call rejected on every
+	// frame, so the YUV->RGB pipeline never executes and video never renders
+	// in Forward+/Mobile on Godot 4.7+. Pass only the declared 4 bytes.
+	push_constant_data.resize(4);
+	memcpy(push_constant_data.ptrw(), &push_constant, 4);
 
 	ComputeListID compute_list = rd->compute_list_begin();
 	rd->compute_list_bind_compute_pipeline(compute_list, pipeline);
